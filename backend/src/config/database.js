@@ -34,9 +34,9 @@ const sequelize = new Sequelize(
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ PostgreSQL connection established successfully.');
+    console.log('PostgreSQL connection established successfully.');
   } catch (error) {
-    console.error('❌ Unable to connect to PostgreSQL:', error.message);
+    console.error('Unable to connect to PostgreSQL:', error.message);
     process.exit(1);
   }
 };
@@ -47,9 +47,9 @@ const testConnection = async () => {
 const syncDatabase = async (options = {}) => {
   try {
     await sequelize.sync(options);
-    console.log('✅ Database synchronized successfully.');
+    console.log('Database synchronized successfully.');
   } catch (error) {
-    console.error('❌ Error synchronizing database:', error.message);
+    console.error('Error synchronizing database:', error.message);
     throw error;
   }
 };
