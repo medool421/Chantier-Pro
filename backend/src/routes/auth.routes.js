@@ -1,13 +1,22 @@
 const router = require('express').Router();
+
 const authController = require('../controllers/auth.controller');
-const authMiddleware = require('../middlewares/auth.middleware');
+const validate = require('../middlewares/validation.middleware');
+const {
+  registerSchema,
+  loginSchema,
+} = require('../validators/auth.validator');
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+router.post(
+  '/register',
+  validate(registerSchema),
+  authController.register
+);
 
-// TEST AUTH
-router.get('/me', authMiddleware, (req, res) => {
-  res.json(req.user);
-});
+router.post(
+  '/login',
+  validate(loginSchema),
+  authController.login
+);
 
 module.exports = router;

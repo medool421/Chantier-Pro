@@ -9,6 +9,8 @@ require('./models'); // loads associations
 // Routes
 const authRoutes = require('./routes/auth.routes');
 
+const testRoutes = require('./routes/test.routes');
+
 // Middlewares
 const errorMiddleware = require('./middlewares/error.middleware');
 
@@ -24,7 +26,7 @@ app.use(express.json());
    ROUTES
 ====================== */
 app.use('/api/auth', authRoutes);
-
+app.use('/api/test', testRoutes);
 /* ======================
    ERROR HANDLER
 ====================== */
