@@ -1,12 +1,63 @@
 import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
+import api from '../api/axios';
 
 export const useAuthStore = create((set) => ({
-  isAuthenticated: false,
   user: null,
+  isAuthenticated: false,
+  isLoading: false,
 
-  login: (user) =>
-    set({ isAuthenticated: true, user }),
+  login: async (email, password) => {
+    set({ isLoading: true });
 
-  logout: () =>
-    set({ isAuthenticated: false, user: null }),
+    try {
+      const res = await api.post('/auth/login', {
+        email,
+        password,
+      });
+
+      const { token, user } = res.data;
+
+      await SecureStore.setItemAsync('accessToken', token);
+
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      return user;
+    } catch (err) {
+      set({ isLoading: false });
+      throw err;
+    }
+  },
+
+  register: async (firstName, lastName, email, password) => {
+  set({ isLoading: true });
+
+  try {
+    const res = await api.post('/api/auth/register', {firstName, lastName, email, password});
+
+    const { token, user } = res.data;
+
+    await SecureStore.setItemAsync('accessToken', token);
+
+    set({
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    return user;
+  } catch (err) {
+    set({ isLoading: false });
+    throw err;
+  }
+},
+
+  logout: async () => {
+    await SecureStore.deleteItemAsync('accessToken');
+    set({ user: null, isAuthenticated: false });
+  },
 }));
