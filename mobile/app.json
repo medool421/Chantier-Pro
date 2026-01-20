@@ -4,7 +4,8 @@
     "slug": "chantierpro",
     "scheme": "chantierpro",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-secure-store"
     ]
   }
 }
