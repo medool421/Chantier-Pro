@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const {sequelize} = require('../config/database');
 
 const User = sequelize.define('User', {
   id: {
@@ -8,100 +8,47 @@ const User = sequelize.define('User', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
   },
+
+  firstName: { type: DataTypes.STRING, allowNull: false },
+  lastName: { type: DataTypes.STRING, allowNull: false },
+
   email: {
-    type: DataTypes.STRING(255),
+    type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    validate: {
-      isEmail: {
-        msg: 'Veuillez fournir un email valide',
-      },
-    },
+    validate: { isEmail: true },
   },
-  passwordHash: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-  },
-  firstName: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        msg: 'Le prénom ne peut pas être vide',
-      },
-    },
-  },
-  lastName: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        msg: 'Le nom ne peut pas être vide',
-      },
-    },
-  },
-  phone: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-  },
+
+  passwordHash: { type: DataTypes.STRING, allowNull: false },
+
+  phone: { type: DataTypes.STRING },
+
   role: {
-    type: DataTypes.ENUM('WORKER', 'MANAGER', 'BOSS'),
-    allowNull: false,
+    type: DataTypes.ENUM('BOSS', 'MANAGER', 'WORKER'),
     defaultValue: 'WORKER',
   },
-  habilitation: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-    comment: 'Certifications électriques (ex: B2V, BR, BC)',
-  },
-  photoUrl: {
-    type: DataTypes.STRING(500),
-    allowNull: true,
-  },
-  isActive: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
-  },
+
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
 }, {
   tableName: 'users',
   timestamps: true,
-  underscored: true, // Convertit automatiquement en snake_case
-  indexes: [
-    { fields: ['email'] },
-    { fields: ['role'] },
-    { fields: ['is_active'] },
-  ],
 });
 
-// Méthodes d'instance
+// 🔒 Hash password before create
+User.beforeCreate(async (user) => {
+  user.passwordHash = await bcrypt.hash(user.passwordHash, 10);
+});
+
+// 🔐 Compare password
+User.prototype.comparePassword = function (password) {
+  return bcrypt.compare(password, this.passwordHash);
+};
+
+// Hide sensitive fields
 User.prototype.toJSON = function () {
   const values = { ...this.get() };
   delete values.passwordHash;
   return values;
 };
-
-User.prototype.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.passwordHash);
-};
-
-// Méthodes statiques
-User.hashPassword = async (password) => {
-  const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 10;
-  return await bcrypt.hash(password, saltRounds);
-};
-
-// Hook avant création : hasher le mot de passe
-User.beforeCreate(async (user) => {
-  if (user.passwordHash) {
-    user.passwordHash = await User.hashPassword(user.passwordHash);
-  }
-});
-
-// Hook avant mise à jour : hasher le mot de passe si modifié
-User.beforeUpdate(async (user) => {
-  if (user.changed('passwordHash')) {
-    user.passwordHash = await User.hashPassword(user.passwordHash);
-  }
-});
 
 module.exports = User;

@@ -11,7 +11,7 @@
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "migrate": "node src/database/migrate.js",
-    "seed": "node src/database/seed.js",
+    "seed": "node seeders/runSeed.js",
     "docs": "node src/docs/generate.js"
   },
   "keywords": [
@@ -25,7 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "cloudinary": "^1.41.0",
+    "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -38,8 +38,10 @@
     "morgan": "^1.10.1",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.16.0",
-    "nodemailer": "^6.9.7",
+    "nodemailer": "^7.0.12",
     "pdfkit": "^0.14.0",
+    "pg": "^8.17.1",
+    "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
