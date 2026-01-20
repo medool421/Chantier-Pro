@@ -44,4 +44,11 @@ User.prototype.comparePassword = function (password) {
   return bcrypt.compare(password, this.passwordHash);
 };
 
+// Hide sensitive fields
+User.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  delete values.passwordHash;
+  return values;
+};
+
 module.exports = User;
