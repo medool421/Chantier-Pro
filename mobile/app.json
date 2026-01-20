@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "ChantierPro",
+    "slug": "chantierpro",
+    "scheme": "chantierpro",
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
