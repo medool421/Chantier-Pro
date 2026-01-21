@@ -6,6 +6,34 @@ export const useAuthStore = create((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  isInitialized: false,
+
+  loadUser: async () => {
+    try {
+      const token = await SecureStore.getItemAsync('accessToken');
+
+      if (!token) {
+        set({ isInitialized: true });
+        return;
+      }
+
+      const res = await api.get('/auth/me');
+
+      set({
+        user: res.data,
+        isAuthenticated: true,
+        isInitialized: true,
+      });
+    } catch (err) {
+      console.log('Error loading user:', err);
+      await SecureStore.deleteItemAsync('accessToken');
+      set({
+        user: null,
+        isAuthenticated: false,
+        isInitialized: true,
+      });
+    }
+  },
 
   login: async (email, password) => {
     set({ isLoading: true });
@@ -34,27 +62,27 @@ export const useAuthStore = create((set) => ({
   },
 
   register: async (firstName, lastName, email, password) => {
-  set({ isLoading: true });
+    set({ isLoading: true });
 
-  try {
-    const res = await api.post('/api/auth/register', {firstName, lastName, email, password});
+    try {
+      const res = await api.post('/auth/register', { firstName, lastName, email, password });
 
-    const { token, user } = res.data;
+      const { token, user } = res.data;
 
-    await SecureStore.setItemAsync('accessToken', token);
+      await SecureStore.setItemAsync('accessToken', token);
 
-    set({
-      user,
-      isAuthenticated: true,
-      isLoading: false,
-    });
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
 
-    return user;
-  } catch (err) {
-    set({ isLoading: false });
-    throw err;
-  }
-},
+      return user;
+    } catch (err) {
+      set({ isLoading: false });
+      throw err;
+    }
+  },
 
   logout: async () => {
     await SecureStore.deleteItemAsync('accessToken');
