@@ -30,3 +30,11 @@ exports.login = async (email, password) => {
 
   return { user, token };
 };
+
+exports.getMe = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+  return user;
+};
