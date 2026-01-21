@@ -1,0 +1,128 @@
+classDiagram
+    class UserRole {
+        <<enumeration>>
+        BOSS
+        MANAGER
+        WORKER
+    }
+
+    class ProjectStatus {
+        <<enumeration>>
+        PLANNED
+        IN_PROGRESS
+        ON_HOLD
+        COMPLETED
+    }
+
+    class TaskStatus {
+        <<enumeration>>
+        TODO
+        IN_PROGRESS
+        BLOCKED
+        COMPLETED
+    }
+
+    class TaskPriority {
+        <<enumeration>>
+        LOW
+        NORMAL
+        HIGH
+    }
+
+    class ReportType {
+        <<enumeration>>
+        DAILY
+        WEEKLY
+        INCIDENT
+    }
+
+    class PhotoType {
+        <<enumeration>>
+        BEFORE
+        AFTER
+        ISSUE
+    }
+
+    class User {
+        +id : UUID
+        +firstName : String
+        +lastName : String
+        +email : String
+        +passwordHash : String
+        +phone : String
+        +role : UserRole
+        +isActive : Boolean
+        +createdAt : DateTime
+    }
+
+    class Project {
+        +id : UUID
+        +name : String
+        +description : Text
+        +address : Text
+        +status : ProjectStatus
+        +progressPercentage : Decimal
+        +startDate : Date
+        +endDate : Date
+        +budget : Decimal
+        +createdAt : DateTime
+    }
+
+    class Team {
+        +id : UUID
+        +name : String
+        +description : Text
+        +createdAt : DateTime
+    }
+
+    class TeamMember {
+        +id : UUID
+        +roleInTeam : String
+        +joinedAt : DateTime
+        +isActive : Boolean
+    }
+
+    class Task {
+        +id : UUID
+        +title : String
+        +description : Text
+        +status : TaskStatus
+        +priority : TaskPriority
+        +dueDate : Date
+        +progressPercentage : Decimal
+        +createdAt : DateTime
+    }
+
+    class Photo {
+        +id : UUID
+        +url : String
+        +caption : Text
+        +type : PhotoType
+        +takenAt : DateTime
+    }
+
+    class Report {
+        +id : UUID
+        +type : ReportType
+        +title : String
+        +content : Text
+        +reportDate : Date
+        +createdAt : DateTime
+    }
+
+    User "1" --> "*" Project : supervises
+    User "1" --> "*" Project : manages
+
+    Project "1" --> "1" Team : has
+    Team "1" --> "*" TeamMember : contains
+    User "1" --> "*" TeamMember : belongs to
+
+    Project "1" --> "*" Task : contains
+    User "1" --> "*" Task : assignedTo
+    User "1" --> "*" Task : createdBy
+
+    Task "1" --> "*" Photo : documented by
+    User "1" --> "*" Photo : takes
+
+    Project "1" --> "*" Report : has
+    User "1" --> "*" Report : writes
