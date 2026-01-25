@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthStore } from '../../src/store/auth.store';
@@ -38,6 +38,7 @@ const handleLogin = async () => {
 
   return (
     <View style={styles.container}>
+      <Image source={require('../../src/assets/ChantierPro.png')} style={styles.image} />
       <Text style={styles.title}>Se connecter</Text>
 
       <TextInput
@@ -80,14 +81,22 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: colors.backgroundLight,
     padding: 24,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+  },
+  image: {
+    width: 150,         
+    height: 150,         
+    resizeMode: 'contain', 
+    alignSelf: 'center',  
+    marginTop: 150,         
+    marginBottom: 30,      
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
     textAlign: 'center',
     color: colors.textDark,
-    marginBottom: 8,
+    marginBottom: 28,
   },
   subtitle: {
     fontSize: 16,
