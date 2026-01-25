@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { useAuthStore } from '../src/store/auth.store';
+import { useAuthStore } from '../src/store/auth.store'; // Vérifie bien le chemin
 
 export default function RootLayout() {
   const loadUser = useAuthStore((state) => state.loadUser);
@@ -18,14 +18,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isInitialized) return;
 
-    // Check if the user is in the (auth) group
     const inAuthGroup = segments[0] === '(auth)';
 
     if (isAuthenticated && inAuthGroup) {
-      // If logged in and inside (auth), redirect to home
-      router.replace('/');
+      // Rediriger vers l'accueil ou le dashboard manager
+      router.replace('/(manager)/tasks'); 
     } else if (!isAuthenticated && !inAuthGroup) {
-      // If NOT logged in and NOT inside (auth), redirect to login
+      // Rediriger vers le login
       router.replace('/(auth)/login');
     }
   }, [isAuthenticated, segments, isInitialized]);
@@ -33,12 +32,10 @@ export default function RootLayout() {
   if (!isInitialized) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }} />
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
