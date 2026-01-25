@@ -1,6 +1,4 @@
-const AppError = require('../utils/AppError');
-
-module.exports = (allowedRoles = []) => {
+module.exports = (...allowedRoles) => { 
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
       return next(new AppError('Unauthorized', 401));

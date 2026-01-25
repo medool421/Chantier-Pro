@@ -12,6 +12,20 @@ const seedUsers = async () => {
       role: 'BOSS',
     },
     {
+      firstName: 'hmad',
+      lastName: 'bl9bla wnass',
+      email: 'manager@pro.com',
+      passwordHash: 'password123',
+      role: 'MANAGER',
+    },
+    {
+      firstName: 'pokiman',
+      lastName: 'laarbi',
+      email: 'manager@test.com',
+      passwordHash: 'password123',
+      role: 'MANAGER',
+    },
+    {
       firstName: 'Manager',
       lastName: 'One',
       email: 'manager@chantierpro.com',

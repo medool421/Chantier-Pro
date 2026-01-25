@@ -2,13 +2,18 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
-const {sequelize} = require('./config/database');
-require('./models'); // loads associations
+const { sequelize } = require('./config/database');
+require('./models'); // load models & associations
 
 // Routes
 const authRoutes = require('./routes/auth.routes');
-
+const projectRoutes = require('./routes/project.routes');
+const taskRoutes = require('./routes/task.routes');
+const reportRoutes = require('./routes/report.routes');
+const fileRoutes = require('./routes/file.routes');
+const teamRoutes = require('./routes/team.routes');
 const testRoutes = require('./routes/test.routes');
 
 // Middlewares
@@ -23,33 +28,56 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
+   STATIC FILES (UPLOADS)
+====================== */
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+/* ======================
    ROUTES
 ====================== */
 app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/teams', teamRoutes);
 app.use('/api/test', testRoutes);
+
 /* ======================
-   ERROR HANDLER
+   HEALTH CHECK
+====================== */
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Bienvenue sur l'API ChantierPro",
+    version: process.env.API_VERSION || 'v1',
+    status: 'online',
+  });
+});
+
+/* ======================
+   ERROR HANDLER (LAST)
 ====================== */
 app.use(errorMiddleware);
 
 /* ======================
-   BOOTSTRAP SERVER
+   SERVER START
 ====================== */
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 
 (async () => {
   try {
     await sequelize.authenticate();
-    console.log('Database connected');
+    console.log('✅ Database connected');
 
-    await sequelize.sync(); // no force
-    console.log('Database synced');
+    await sequelize.sync(); // no force, no alter
+    console.log('✅ Database synced');
 
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (err) {
-    console.error('Startup error:', err);
+    console.error('❌ Startup error:', err);
     process.exit(1);
   }
 })();

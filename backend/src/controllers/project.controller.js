@@ -1,17 +1,8 @@
-const {
-  createProject,
-  getAllProjects,
-  getProjectById,
-  updateProject,
-  updateStatus,
-  deleteProject,
-  assignManager,
-  calculateProgress,
-} = require('../services/project.service');
+const projectService = require('../services/project.service');
 const catchAsync = require('../utils/catchAsync');
 
 exports.createProject = catchAsync(async (req, res) => {
-  const project = await  createProject(
+  const project = await projectService.createProject(
     req.body,
     req.user.id
   );
@@ -23,7 +14,7 @@ exports.createProject = catchAsync(async (req, res) => {
 });
 
 exports.getProjects = catchAsync(async (req, res) => {
-  const projects = await  getAllProjects(
+  const projects = await projectService.getAllProjects(
     req.user.id,
     req.query
   );
@@ -35,7 +26,7 @@ exports.getProjects = catchAsync(async (req, res) => {
 });
 
 exports.getProject = catchAsync(async (req, res) => {
-  const project = await  getProjectById(
+  const project = await projectService.getProjectById(
     req.params.id,
     req.user.id
   );
@@ -47,7 +38,7 @@ exports.getProject = catchAsync(async (req, res) => {
 });
 
 exports.updateProject = catchAsync(async (req, res) => {
-  const project = await  updateProject(
+  const project = await projectService.updateProject(
     req.params.id,
     req.body,
     req.user.id
@@ -60,7 +51,7 @@ exports.updateProject = catchAsync(async (req, res) => {
 });
 
 exports.updateProjectStatus = catchAsync(async (req, res) => {
-  const project = await  updateStatus(
+  const project = await projectService.updateStatus(
     req.params.id,
     req.body.status,
     req.user.id
@@ -73,7 +64,7 @@ exports.updateProjectStatus = catchAsync(async (req, res) => {
 });
 
 exports.deleteProject = catchAsync(async (req, res) => {
-  await  deleteProject(
+  await projectService.deleteProject(
     req.params.id,
     req.user.id
   );
@@ -82,7 +73,7 @@ exports.deleteProject = catchAsync(async (req, res) => {
 });
 
 exports.assignManager = catchAsync(async (req, res) => {
-  const project = await  assignManager(
+  const project = await projectService.assignManager(
     req.params.id,
     req.body.managerId,
     req.user.id
@@ -93,3 +84,25 @@ exports.assignManager = catchAsync(async (req, res) => {
     data: project,
   });
 });
+
+exports.getManagers = catchAsync(async (req, res) => {
+  const managers = await projectService.getManagers();
+
+  res.status(200).json({
+    success: true,
+    data: managers,
+  });
+});
+
+exports.getMyProject = async (req, res, next) => {
+  try {
+    const project = await projectService.getProjectByManager(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      data: project,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
