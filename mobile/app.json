@@ -2,7 +2,28 @@
   "expo": {
     "name": "ChantierPro",
     "slug": "chantierpro",
+    "version": "1.0.0",
     "scheme": "chantierpro",
+    "orientation": "portrait",
+    "icon": "./src/assets/ChantierPro.png", 
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./src/assets/ChantierPro.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/ChantierPro.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store"
