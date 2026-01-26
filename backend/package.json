@@ -11,7 +11,7 @@
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "migrate": "node src/database/migrate.js",
-    "seed": "node seeders/runSeed.js",
+    "seed": "node seeders/runSeed",
     "docs": "node src/docs/generate.js"
   },
   "keywords": [
