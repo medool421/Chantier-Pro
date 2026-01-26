@@ -23,9 +23,9 @@ const app = express();
 
 /* ======================
    GLOBAL MIDDLEWARES
-====================== */
-app.use(cors());
-app.use(express.json());
+   ====================== */
+   app.use(express.json());
+   app.use(cors());
 
 /* ======================
    STATIC FILES (UPLOADS)

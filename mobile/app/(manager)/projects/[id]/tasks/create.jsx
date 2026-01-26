@@ -17,12 +17,10 @@ import { colors } from '../../../../../src/theme/colors';
 import { TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import api from '../../../../../src/api/axios';
 
-// Protection : définir des valeurs par défaut si TASK_PRIORITY n'est pas importé
 const DEFAULT_PRIORITIES = {
   LOW: 'LOW',
   NORMAL: 'NORMAL',
   HIGH: 'HIGH',
-  URGENT: 'URGENT',
 };
 
 const PRIORITIES = TASK_PRIORITY || DEFAULT_PRIORITIES;
@@ -70,30 +68,55 @@ export default function CreateTask() {
 
       if (!initialProjectId) {
         console.warn('No project ID found in params');
+        Alert.alert('Erreur', 'ID du projet manquant');
         setFetchingData(false);
         return;
       }
 
+      console.log('📡 Fetching team for project:', initialProjectId);
       const teamRes = await api.get(`/projects/${initialProjectId}/team`);
-      const teamData = Array.isArray(teamRes.data?.data) ? teamRes.data?.data[0] : teamRes.data?.data;
+      const teamData = teamRes.data?.data;
 
-      if (!teamData) {
-        console.warn('No team found for this project');
+      console.log('📦 Team data received:', teamData);
+
+      if (!teamData || !teamData.members) {
+        console.warn('⚠️ No team or members found for this project');
+        Alert.alert(
+          'Information',
+          'Aucune équipe n\'est assignée à ce projet. Veuillez d\'abord créer une équipe.'
+        );
         setWorkers([]);
+        setFilteredWorkers([]);
         return;
       }
 
-      const workersList =
-        teamData?.TeamMembers
-          ?.map((tm) => tm.User)
-          ?.filter((u) => u.role === 'WORKER') || [];
+      // ✅ Extraire les workers de la liste des membres
+      const workersList = teamData.members
+        .map((member) => member.user) // Accéder à 'user' en minuscule
+        .filter((u) => u && u.role === 'WORKER'); // Filtrer uniquement les WORKERS
+
+      console.log(`✅ Found ${workersList.length} workers:`, workersList);
+
+      if (workersList.length === 0) {
+        Alert.alert(
+          'Information',
+          'Aucun ouvrier n\'est assigné à ce projet. Veuillez d\'abord ajouter des ouvriers à l\'équipe.'
+        );
+      }
 
       setWorkers(workersList);
       setFilteredWorkers(workersList);
+      
     } catch (error) {
-      console.error('Erreur lors de la récupération des données:', error);
-      Alert.alert('Erreur', 'Impossible de charger les membres de l’équipe.');
+      console.error('❌ Error fetching data:', error);
+      console.error('❌ Error response:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message || 
+                          'Impossible de charger les membres de l\'équipe.';
+      
+      Alert.alert('Erreur', errorMessage);
       setWorkers([]);
+      setFilteredWorkers([]);
     } finally {
       setFetchingData(false);
     }
@@ -113,7 +136,7 @@ export default function CreateTask() {
 
     setLoading(true);
     try {
-      await api.post(`/projects/${initialProjectId}/tasks`, {
+      await api.post(`tasks/projects/${initialProjectId}/tasks`, {
         title: form.title,
         description: form.description,
         priority: form.priority,
@@ -141,16 +164,25 @@ export default function CreateTask() {
       onPress={() => {
         setForm({ ...form, assignedTo: item.id });
         setModalVisible(false);
+        setSearchQuery(''); // Reset search
       }}
     >
       <View style={styles.avatarSmall}>
-        <Text style={styles.avatarSmallText}>{item.firstName?.[0]}{item.lastName?.[0]}</Text>
+        <Text style={styles.avatarSmallText}>
+          {item.firstName?.[0]}{item.lastName?.[0]}
+        </Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.workerName, form.assignedTo === item.id && styles.selectedTextColor]}>
+        <Text style={[
+          styles.workerName, 
+          form.assignedTo === item.id && styles.selectedTextColor
+        ]}>
           {item.firstName} {item.lastName}
         </Text>
-        <Text style={[styles.workerEmail, form.assignedTo === item.id && styles.selectedTextMutedColor]}>
+        <Text style={[
+          styles.workerEmail, 
+          form.assignedTo === item.id && styles.selectedTextMutedColor
+        ]}>
           {item.email}
         </Text>
       </View>
@@ -264,17 +296,24 @@ export default function CreateTask() {
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => {
+          setModalVisible(false);
+          setSearchQuery('');
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Choisir un ouvrier</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <TouchableOpacity onPress={() => {
+                setModalVisible(false);
+                setSearchQuery('');
+              }}>
                 <Ionicons name="close" size={24} color={colors.textDark} />
               </TouchableOpacity>
             </View>
 
+            {/* Search bar */}
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={20} color={colors.textMuted} />
               <TextInput
@@ -283,22 +322,44 @@ export default function CreateTask() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
 
+            {/* Option "Non assigné" */}
             <TouchableOpacity
-              style={[styles.workerModalItem, !form.assignedTo && styles.workerModalItemSelected]}
+              style={[
+                styles.workerModalItem, 
+                !form.assignedTo && styles.workerModalItemSelected
+              ]}
               onPress={() => {
                 setForm({ ...form, assignedTo: '' });
                 setModalVisible(false);
+                setSearchQuery('');
               }}
             >
               <View style={styles.avatarSmall}>
-                <Ionicons name="person-remove-outline" size={18} color={colors.primary} />
+                <Ionicons 
+                  name="person-remove-outline" 
+                  size={18} 
+                  color={!form.assignedTo ? '#fff' : colors.primary} 
+                />
               </View>
-              <Text style={[styles.workerName, !form.assignedTo && styles.selectedTextColor]}>Non assigné</Text>
-              {!form.assignedTo && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+              <Text style={[
+                styles.workerName, 
+                !form.assignedTo && styles.selectedTextColor
+              ]}>
+                Non assigné
+              </Text>
+              {!form.assignedTo && (
+                <Ionicons name="checkmark-circle" size={24} color="#fff" />
+              )}
             </TouchableOpacity>
 
+            {/* Liste des workers */}
             <FlatList
               data={filteredWorkers}
               keyExtractor={(item) => item.id}
@@ -306,7 +367,10 @@ export default function CreateTask() {
               contentContainerStyle={{ paddingBottom: 20 }}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>Aucun membre trouvé</Text>
+                  <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                  <Text style={styles.emptyText}>
+                    {searchQuery ? 'Aucun résultat trouvé' : 'Aucun ouvrier disponible'}
+                  </Text>
                 </View>
               }
             />
@@ -360,28 +424,53 @@ const styles = StyleSheet.create({
 
   // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalContent: { 
+    backgroundColor: '#fff', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    padding: 24, 
+    maxHeight: '80%' 
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark },
   searchContainer: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5',
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, marginBottom: 16
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    borderRadius: 12, 
+    marginBottom: 16
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
   workerModalItem: {
-    flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, marginBottom: 8,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 12, 
+    borderRadius: 12, 
+    marginBottom: 8,
     backgroundColor: '#F9F9F9'
   },
   workerModalItemSelected: { backgroundColor: colors.primary },
   avatarSmall: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryLight,
-    justifyContent: 'center', alignItems: 'center', marginRight: 12
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12
   },
   avatarSmallText: { fontSize: 12, fontWeight: 'bold', color: colors.primary },
   workerName: { fontSize: 16, fontWeight: '600', color: colors.textDark },
   workerEmail: { fontSize: 12, color: colors.textMuted },
   selectedTextColor: { color: '#fff' },
   selectedTextMutedColor: { color: 'rgba(255,255,255,0.7)' },
-  emptyContainer: { padding: 20, alignItems: 'center' },
-  emptyText: { color: colors.textMuted, fontStyle: 'italic' }
+  emptyContainer: { padding: 40, alignItems: 'center' },
+  emptyText: { color: colors.textMuted, fontStyle: 'italic', marginTop: 12, fontSize: 14 }
 });
