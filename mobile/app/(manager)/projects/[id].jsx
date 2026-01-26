@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  ActivityIndicator, Alert, Modal, TextInput 
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, Modal, TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,12 +63,12 @@ export default function ManagerProjectDetails() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         {/* Header Card */}
         <View style={styles.card}>
           <Text style={styles.projectTitle}>{project.name}</Text>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statusContainer}
             onPress={() => setStatusModalVisible(true)}
           >
@@ -110,8 +110,8 @@ export default function ManagerProjectDetails() {
           <View style={styles.progressContainer}>
             <Text style={styles.progressLabel}>Progression</Text>
             <View style={styles.progressBar}>
-              <View 
-                style={[styles.progressFill, { width: `${project.progressPercentage || 0}%` }]} 
+              <View
+                style={[styles.progressFill, { width: `${project.progressPercentage || 0}%` }]}
               />
             </View>
             <Text style={styles.progressText}>{project.progressPercentage || 0}%</Text>
@@ -121,11 +121,11 @@ export default function ManagerProjectDetails() {
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions Rapides</Text>
-          
+
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => router.push({
-              pathname: '/(manager)/tasks/create',
+              pathname: `/(manager)/projects/${id}/tasks/create`,
               params: { projectId: id }
             })}
           >
@@ -142,7 +142,7 @@ export default function ManagerProjectDetails() {
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => router.push({
-              pathname: '/(manager)/tasks',
+              pathname: `/(manager)/projects/${id}/tasks`,
               params: { projectId: id }
             })}
           >
@@ -158,7 +158,7 @@ export default function ManagerProjectDetails() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push('/(manager)/team')}
+            onPress={() => router.push(`/(manager)/projects/${id}/team/team`)}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]}>
               <Ionicons name="people-outline" size={24} color="#7B1FA2" />
@@ -183,7 +183,7 @@ export default function ManagerProjectDetails() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Changer le statut</Text>
-            
+
             {Object.entries(PROJECT_STATUS).map(([key, value]) => (
               <TouchableOpacity
                 key={value}

@@ -1,6 +1,3 @@
-// ============================================
-// app/(manager)/tasks/[id].jsx - DÉTAIL TÂCHE MANAGER
-// ============================================
 import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
@@ -8,9 +5,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../../src/theme/colors';
-import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../src/utils/constants';
-import api from '../../../src/api/axios';
+import { colors } from '../../../../../src/theme/colors';
+import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
+import api from '../../../../../src/api/axios';
 
 export default function ManagerTaskDetail() {
   const { id } = useLocalSearchParams();
@@ -27,7 +24,7 @@ export default function ManagerTaskDetail() {
 
   const fetchTaskDetails = async () => {
     try {
-      const response = await api.get(`/tasks/${id}`);
+      const response = await api.get(`tasks/tasks/${id}`);
       setTask(response.data.data);
       setEditForm(response.data.data);
     } catch (error) {

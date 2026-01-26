@@ -44,6 +44,21 @@ router.get(
   projectController.getMyProject
 );
 
+// GET project team
+router.get(
+  '/:id/team',
+  role('BOSS', 'MANAGER'),
+  projectController.getProjectTeam
+);
+
+
+// Boss & Manager get project details
+router.get(
+  '/:id',
+  role('BOSS', 'MANAGER'),
+  projectController.getProject
+);
+
 // Boss & Manager get tasks for a project
 router.get(
   '/:id/tasks',
@@ -54,13 +69,6 @@ router.get(
     next();
   },
   taskController.getProjectTasks
-);
-
-// Boss & Manager get project details
-router.get(
-  '/:id',
-  role('BOSS', 'MANAGER'),
-  projectController.getProject
 );
 
 // Boss updates project info

@@ -1,129 +1,213 @@
-const { Task, Project, User } = require('../models');
+const { Task, User, Project } = require('../models');
 const AppError = require('../utils/AppError');
 
-async function createTask(projectId, data, managerId) {
-  const project = await Project.findOne({
-    where: { id: projectId, managerId },
+//  Get task by ID with permission check
+async function getTaskById(taskId, user) {
+  const task = await Task.findByPk(taskId, {
+    include: [
+      {
+        model: User,
+        as: 'assignee',
+        attributes: ['id', 'firstName', 'lastName', 'email'],
+      },
+      {
+        model: Project,
+        as: 'project',
+        attributes: ['id', 'name', 'status', 'description'],
+      },
+    ],
   });
 
-  if (!project) {
-    throw new AppError('Project not found or access denied', 404);
+  if (!task) {
+    throw new AppError('Task not found', 404);
   }
 
-  const worker = await User.findOne({
-    where: { id: data.assignedTo, role: 'WORKER', isActive: true },
-  });
-
-  if (!worker) {
-    throw new AppError('Invalid worker', 400);
+  // Permission check: WORKER can only view their own tasks
+  if (user.role === 'WORKER' && task.assignedTo !== user.id) {
+    throw new AppError('You do not have permission to view this task', 403);
   }
 
-  return Task.create({
-    title: data.title,
-    description: data.description,
-    priority: data.priority,
-    status: 'TODO',
-    progressPercentage: 0,
-    projectId,
-    assignedTo: data.assignedTo,
-    createdBy: managerId,
-  });
+  return task;
 }
 
+/**
+ * Get all tasks for a specific project
+ */
 async function getProjectTasks(projectId, user) {
+  const project = await Project.findByPk(projectId);
+  if (!project) {
+    throw new AppError('Project not found', 404);
+  }
+
   return Task.findAll({
     where: { projectId },
     include: [
       {
         model: User,
         as: 'assignee',
-        attributes: ['id', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName', 'email'],
       },
-    ],
-    order: [['createdAt', 'DESC']],
-  });
-}
-
-async function getMyTasks(workerId) {
-  return Task.findAll({
-    where: { assignedTo: workerId },
-    include: [
       {
         model: Project,
-        attributes: ['id', 'name'],
+        as: 'project',
+        attributes: ['id', 'name', 'status'],
       },
     ],
     order: [['createdAt', 'DESC']],
   });
 }
 
-async function updateTask(id, data, managerId) {
-  const task = await Task.findByPk(id);
+//  Get tasks assigned to a specific user
 
-  if (!task) {
-    throw new AppError('Task not found', 404);
-  }
-
-  const project = await Project.findOne({
-    where: { id: task.projectId, managerId },
+async function getMyTasks(userId) {
+  return Task.findAll({
+    where: { assignedTo: userId },
+    include: [
+      {
+        model: User,
+        as: 'assignee',
+        attributes: ['id', 'firstName', 'lastName', 'email'],
+      },
+      {
+        model: Project,
+        as: 'project',
+        attributes: ['id', 'name', 'status', 'description'],
+      },
+    ],
+    order: [
+      ['dueDate', 'ASC'],
+      ['priority', 'DESC'],
+      ['createdAt', 'DESC'],
+    ],
   });
-
-  if (!project) {
-    throw new AppError('Access denied', 403);
-  }
-
-  await task.update(data);
-  return task;
 }
 
-async function updateTaskStatus(id, status, user) {
-  const task = await Task.findByPk(id);
+  // Create a new task
 
-  if (!task) {
-    throw new AppError('Task not found', 404);
+async function createTask(projectId, taskData) {
+  const project = await Project.findByPk(projectId);
+  if (!project) {
+    throw new AppError('Project not found', 404);
   }
 
-  if (
-    user.role === 'WORKER' &&
-    task.assignedTo !== user.id
-  ) {
-    throw new AppError('Access denied', 403);
+  if (taskData.assignedTo) {
+    const assignee = await User.findByPk(taskData.assignedTo);
+    if (!assignee) {
+      throw new AppError('Assignee user not found', 404);
+    }
+    if (assignee.role !== 'WORKER') {
+      throw new AppError('Tasks can only be assigned to WORKER role', 400);
+    }
   }
 
-  task.status = status;
-
-  if (status === 'COMPLETED') {
-    task.progressPercentage = 100;
-  } else if (status === 'IN_PROGRESS') {
-    task.progressPercentage = 50;
-  }
-
-  await task.save();
-  return task;
-}
-
-async function deleteTask(id, managerId) {
-  const task = await Task.findByPk(id);
-
-  if (!task) {
-    throw new AppError('Task not found', 404);
-  }
-
-  const project = await Project.findOne({
-    where: { id: task.projectId, managerId },
+  const task = await Task.create({
+    ...taskData,
+    projectId,
   });
 
-  if (!project) {
-    throw new AppError('Access denied', 403);
+  return Task.findByPk(task.id, {
+    include: [
+      {
+        model: User,
+        as: 'assignee',
+        attributes: ['id', 'firstName', 'lastName', 'email'],
+      },
+      {
+        model: Project,
+        as: 'project',
+        attributes: ['id', 'name', 'status'],
+      },
+    ],
+  });
+}
+
+  // Update a task
+
+async function updateTask(taskId, updates) {
+  const task = await Task.findByPk(taskId);
+
+  if (!task) {
+    throw new AppError('Task not found', 404);
+  }
+
+  if (updates.assignedTo) {
+    const assignee = await User.findByPk(updates.assignedTo);
+    if (!assignee) {
+      throw new AppError('Assignee user not found', 404);
+    }
+    if (assignee.role !== 'WORKER') {
+      throw new AppError('Tasks can only be assigned to WORKER role', 400);
+    }
+  }
+
+  await task.update(updates);
+
+  return Task.findByPk(taskId, {
+    include: [
+      {
+        model: User,
+        as: 'assignee',
+        attributes: ['id', 'firstName', 'lastName', 'email'],
+      },
+      {
+        model: Project,
+        as: 'project',
+        attributes: ['id', 'name', 'status'],
+      },
+    ],
+  });
+}
+
+
+// Update task status with permission check
+async function updateTaskStatus(taskId, status, user) {
+  const task = await Task.findByPk(taskId);
+
+  if (!task) {
+    throw new AppError('Task not found', 404);
+  }
+
+  if (user.role === 'WORKER' && task.assignedTo !== user.id) {
+    throw new AppError('You can only update your own tasks', 403);
+  }
+
+  await task.update({ status });
+
+  return Task.findByPk(taskId, {
+    include: [
+      {
+        model: User,
+        as: 'assignee',
+        attributes: ['id', 'firstName', 'lastName', 'email'],
+      },
+      {
+        model: Project,
+        as: 'project',
+        attributes: ['id', 'name', 'status'],
+      },
+    ],
+  });
+}
+
+
+  // Delete a task
+
+async function deleteTask(taskId) {
+  const task = await Task.findByPk(taskId);
+
+  if (!task) {
+    throw new AppError('Task not found', 404);
   }
 
   await task.destroy();
+  return true;
 }
 
 module.exports = {
-  createTask,
+  getTaskById,
   getProjectTasks,
   getMyTasks,
+  createTask,
   updateTask,
   updateTaskStatus,
   deleteTask,

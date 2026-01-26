@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
-import api from '../../../src/api/axios';
-import { colors } from '../../../src/theme/colors';
+import api from '../../../../../src/api/axios';
+import { colors } from '../../../../../src/theme/colors';
 
 export default function ManagerFiles() {
   const [files, setFiles] = useState([]);

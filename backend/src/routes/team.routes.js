@@ -28,8 +28,6 @@ router.get(
     teamController.getTeams
 );
 
-// Get Single Team (All/Members?) - restrict to specific roles for now
-router.get('/:id', teamController.getTeam);
 
 // Update Team
 router.put(

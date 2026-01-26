@@ -25,35 +25,35 @@ export default function ManagerLayout() {
         }}
       />
 
-      {/* Project overview */}
+      {/* Project details */}
       <Stack.Screen
-        name="project/index"
+        name="projects/[id]"
         options={{
-          title: 'Mon Chantier',
+          title: 'Détails du Projet',
         }}
       />
 
       {/* Project tasks */}
       <Stack.Screen
-        name="project/tasks"
+        name="projects/[id]/tasks/index"
         options={{
-          title: 'Tâches du Chantier',
+          title: 'Tâches du Projet',
         }}
       />
 
-      {/* Project files */}
+      {/* Create task */}
       <Stack.Screen
-        name="project/files"
+        name="projects/[id]/tasks/create"
         options={{
-          title: 'Fichiers du Chantier',
+          title: 'Nouvelle Tâche',
         }}
       />
 
-      {/* Project reports */}
+      {/* Team */}
       <Stack.Screen
-        name="project/reports"
+        name="projects/[id]/team/team"
         options={{
-          title: 'Rapports',
+          title: 'Équipe du Projet',
         }}
       />
 

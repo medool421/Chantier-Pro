@@ -26,6 +26,18 @@ exports.getProjectTasks = catchAsync(async (req, res) => {
   });
 });
 
+exports.getTaskById = catchAsync(async (req, res) => {
+  const task = await taskService.getTaskById(
+    req.params.id,
+    req.user
+  );
+
+  res.json({
+    success: true,
+    data: task,
+  });
+});
+
 exports.getMyTasks = catchAsync(async (req, res) => {
   const tasks = await taskService.getMyTasks(req.user.id);
 

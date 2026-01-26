@@ -20,19 +20,19 @@ User.hasMany(Project, { as: 'supervisedProjects', foreignKey: 'bossId' });
 Project.belongsTo(User, { as: 'boss', foreignKey: 'bossId' });
 
 // Project ↔ Team
-Project.hasOne(Team, { foreignKey: 'projectId' });
-Team.belongsTo(Project, { foreignKey: 'projectId' });
+Project.hasOne(Team, { as: 'team', foreignKey: 'projectId' });  
+Team.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });  
 
 // Team ↔ TeamMember ↔ User
-Team.hasMany(TeamMember, { foreignKey: 'teamId' });
-TeamMember.belongsTo(Team, { foreignKey: 'teamId' });
+Team.hasMany(TeamMember, { as: 'members', foreignKey: 'teamId' });  
+TeamMember.belongsTo(Team, { as: 'team', foreignKey: 'teamId' });  
 
-User.hasMany(TeamMember, { foreignKey: 'userId' });
-TeamMember.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(TeamMember, { as: 'teamMemberships', foreignKey: 'userId' });  
+TeamMember.belongsTo(User, { as: 'user', foreignKey: 'userId' });  
 
 // Project ↔ Task
-Project.hasMany(Task, { foreignKey: 'projectId' });
-Task.belongsTo(Project, { foreignKey: 'projectId' });
+Project.hasMany(Task, { as: 'tasks', foreignKey: 'projectId' });  
+Task.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });  
 
 // User ↔ Task
 User.hasMany(Task, { as: 'assignedTasks', foreignKey: 'assignedTo' });
@@ -42,20 +42,20 @@ User.hasMany(Task, { as: 'createdTasks', foreignKey: 'createdBy' });
 Task.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
 
 // Task ↔ File
-Task.hasMany(File, { foreignKey: 'taskId' });
-File.belongsTo(Task, { foreignKey: 'taskId' });
+Task.hasMany(File, { as: 'files', foreignKey: 'taskId' });  
+File.belongsTo(Task, { as: 'task', foreignKey: 'taskId' });  
 
 // Report ↔ File
-Report.hasMany(File, { foreignKey: 'reportId' });
-File.belongsTo(Report, { foreignKey: 'reportId' });
+Report.hasMany(File, { as: 'files', foreignKey: 'reportId' });  
+File.belongsTo(Report, { as: 'report', foreignKey: 'reportId' });  
 
 // Project ↔ Report
-Project.hasMany(Report, { foreignKey: 'projectId' });
-Report.belongsTo(Project, { foreignKey: 'projectId' });
+Project.hasMany(Report, { as: 'reports', foreignKey: 'projectId' });  
+Report.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });  
 
 // User ↔ Report
-User.hasMany(Report, { foreignKey: 'userId' });
-Report.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Report, { as: 'reports', foreignKey: 'userId' });  
+Report.belongsTo(User, { as: 'user', foreignKey: 'userId' });  
 
 module.exports = {
   sequelize,

@@ -1,4 +1,5 @@
 const projectService = require('../services/project.service');
+const teamService = require('../services/team.service');
 const catchAsync = require('../utils/catchAsync');
 
 exports.createProject = catchAsync(async (req, res) => {
@@ -101,6 +102,19 @@ exports.getMyProject = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: project,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getProjectTeam = async (req, res, next) => {
+  try {
+    const team = await teamService.getProjectTeam(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      data: team,
     });
   } catch (error) {
     next(error);

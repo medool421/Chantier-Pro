@@ -1,7 +1,9 @@
 const Project = require('../models/Project');
 const User = require('../models/User');
 const Task = require('../models/Task');
+const TeamMember = require('../models/TeamMember');
 const AppError = require('../utils/AppError');
+
 const { Op } = require('sequelize');
 
 async function createProject(data, bossId) {
@@ -149,6 +151,8 @@ async function getProjectByManager(managerId) {
 
   return project;
 }
+
+
 
 module.exports = {
   createProject,
