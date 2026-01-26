@@ -36,6 +36,13 @@ router.get(
   taskController.getMyTasks
 );
 
+// Get single task details
+router.get(
+  '/tasks/:id',
+  role('BOSS', 'MANAGER', 'WORKER'),
+  taskController.getTaskById
+);
+
 // Manager updates task
 router.put(
   '/tasks/:id',

@@ -17,6 +17,20 @@ exports.getTeam = catchAsync(async (req, res) => {
     });
 });
 
+
+exports.getProjTeam = async (req, res, next) => {
+  try {
+    const team = await teamService.getProjectTeam(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      data: team,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getTeams = catchAsync(async (req, res) => {
     const teams = await teamService.getTeams(req.query);
     res.json({

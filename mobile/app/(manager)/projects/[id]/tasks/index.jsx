@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  ActivityIndicator, RefreshControl , ScrollView
+  ActivityIndicator, RefreshControl, ScrollView, Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../../src/theme/colors';
-import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../src/utils/constants';
-import api from '../../../src/api/axios';
+import { colors } from '../../../../../src/theme/colors';
+import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
+import api from '../../../../../src/api/axios';
 
 export default function ManagerTasksList() {
   const router = useRouter();
@@ -16,6 +16,7 @@ export default function ManagerTasksList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('ALL');
+  const [error, setError] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -25,14 +26,36 @@ export default function ManagerTasksList() {
 
   const fetchTasks = async () => {
     try {
+      setError(null);
       let response;
+      
       if (projectId) {
         // Tasks d'un projet spécifique
         response = await api.get(`/projects/${projectId}/tasks`);
-      } 
-      setTasks(response.data.data || []);
+      } else {
+        // Toutes les tâches du manager
+        response = await api.get('/tasks'); // Ajustez selon votre route API
+      }
+      
+      // Validation de la réponse
+      if (response.data && Array.isArray(response.data.data)) {
+        setTasks(response.data.data);
+      } else if (response.data && Array.isArray(response.data)) {
+        setTasks(response.data);
+      } else {
+        setTasks([]);
+      }
     } catch (error) {
-      console.error(error);
+      console.error('Erreur lors de la récupération des tâches:', error);
+      setError(error.response?.data?.message || 'Impossible de charger les tâches');
+      setTasks([]);
+      
+      // Alerte utilisateur
+      Alert.alert(
+        'Erreur',
+        'Impossible de charger les tâches. Veuillez réessayer.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -45,6 +68,7 @@ export default function ManagerTasksList() {
   };
 
   const getFilteredTasks = () => {
+    if (!tasks || tasks.length === 0) return [];
     if (filter === 'ALL') return tasks;
     return tasks.filter(t => t.status === filter);
   };
@@ -52,7 +76,7 @@ export default function ManagerTasksList() {
   const renderTaskItem = ({ item }) => (
     <TouchableOpacity
       style={styles.taskCard}
-      onPress={() => router.push(`/(manager)/tasks/${item.id}`)}
+      onPress={() => router.push(`/(manager)/projects/[id]/tasks/${item.id}`)}
     >
       <View style={styles.taskHeader}>
         <View style={{ flex: 1 }}>
@@ -65,7 +89,7 @@ export default function ManagerTasksList() {
         </View>
         <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) }]}>
           <Text style={styles.priorityText}>
-            {TASK_PRIORITY_LABELS[item.priority]}
+            {TASK_PRIORITY_LABELS[item.priority] || 'Normal'}
           </Text>
         </View>
       </View>
@@ -77,7 +101,7 @@ export default function ManagerTasksList() {
       <View style={styles.taskFooter}>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>
-            {TASK_STATUS_LABELS[item.status]}
+            {TASK_STATUS_LABELS[item.status] || 'À faire'}
           </Text>
         </View>
 
@@ -85,7 +109,7 @@ export default function ManagerTasksList() {
           <View style={styles.assigneeContainer}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {item.assignee.firstName?.[0]}{item.assignee.lastName?.[0]}
+                {item.assignee.firstName?.[0] || ''}{item.assignee.lastName?.[0] || ''}
               </Text>
             </View>
             <Text style={styles.assigneeName} numberOfLines={1}>
@@ -112,6 +136,18 @@ export default function ManagerTasksList() {
       </View>
     </TouchableOpacity>
   );
+
+  // État de chargement
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Chargement des tâches...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -140,7 +176,7 @@ export default function ManagerTasksList() {
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push({
-            pathname: '/(manager)/tasks/create',
+            pathname: '/(manager)/projects/${id}/tasks/create',
             params: projectId ? { projectId } : {}
           })}
         >
@@ -148,32 +184,43 @@ export default function ManagerTasksList() {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={getFilteredTasks()}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderTaskItem}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="checkbox-outline" size={64} color={colors.textMuted} />
-              <Text style={styles.emptyText}>Aucune tâche</Text>
-            </View>
-          }
-        />
-      )}
+      <FlatList
+        data={getFilteredTasks()}
+        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+        renderItem={renderTaskItem}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[colors.primary]} 
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="checkbox-outline" size={64} color={colors.textMuted} />
+            <Text style={styles.emptyText}>
+              {error ? 'Erreur de chargement' : 'Aucune tâche'}
+            </Text>
+            {error && (
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={fetchTasks}
+              >
+                <Text style={styles.retryText}>Réessayer</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        }
+      />
     </View>
   );
 }
 
-const isOverdue = (dueDate) => new Date(dueDate) < new Date();
+const isOverdue = (dueDate) => {
+  if (!dueDate) return false;
+  return new Date(dueDate) < new Date();
+};
 
 const getStatusColor = (status) => ({
   TODO: '#E3F2FD',
@@ -243,6 +290,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 24,
@@ -278,6 +330,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     marginLeft: 8,
+    height: 24,
+    justifyContent: 'center',
   },
   priorityText: {
     fontSize: 10,
@@ -351,5 +405,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 16,
     marginTop: 16,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

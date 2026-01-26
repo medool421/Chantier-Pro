@@ -87,6 +87,39 @@ async function getTeams(filters = {}) {
     });
 }
 
+async function getProjectTeam(filters = {}) {
+    const where = {};
+
+    // Handle if filters is just an ID (string or number)
+    if (typeof filters === 'string' || typeof filters === 'number') {
+        where.projectId = filters;
+    } else {
+        // Apply filters from object
+        if (filters.projectId) where.projectId = filters.projectId;
+        if (filters.id) where.id = filters.id;
+    }
+
+    return await Team.findAll({
+        where,
+        include: [
+            {
+                model: TeamMember,
+                include: [
+                    {
+                        model: User,
+                        attributes: ['id', 'firstName', 'lastName', 'email', 'role'],
+                    },
+                ],
+            },
+            // Including Project info as per your second example
+            {
+                model: Project,
+                attributes: ['id', 'name']
+            }
+        ],
+    });
+}
+
 module.exports = {
     createTeam,
     getTeamById,
@@ -94,5 +127,6 @@ module.exports = {
     deleteTeam,
     addMember,
     removeMember,
-    getTeams
+    getTeams,
+    getProjectTeam
 };
