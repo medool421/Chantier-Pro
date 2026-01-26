@@ -26,9 +26,11 @@ async function getTeamById(id) {
         include: [
             {
                 model: TeamMember,
-                include: [{ model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'role'] }]
+                as: 'members',
+
+                include: [{ model: User, as: 'user', attributes: ['id', 'firstName', 'lastName', 'email', 'role'] }]
             },
-            { model: Project, attributes: ['id', 'name'] }
+            { model: Project, as: 'project', attributes: ['id', 'name'] }
         ]
     });
 
@@ -87,37 +89,30 @@ async function getTeams(filters = {}) {
     });
 }
 
-async function getProjectTeam(filters = {}) {
-    const where = {};
-
-    // Handle if filters is just an ID (string or number)
-    if (typeof filters === 'string' || typeof filters === 'number') {
-        where.projectId = filters;
-    } else {
-        // Apply filters from object
-        if (filters.projectId) where.projectId = filters.projectId;
-        if (filters.id) where.id = filters.id;
-    }
-
-    return await Team.findAll({
-        where,
+async function getProjectTeam(projectId) {
+  const team = await Team.findOne({
+    where: { projectId },
+    include: [
+      {
+        model: TeamMember,
+        as: 'members', 
         include: [
-            {
-                model: TeamMember,
-                include: [
-                    {
-                        model: User,
-                        attributes: ['id', 'firstName', 'lastName', 'email', 'role'],
-                    },
-                ],
-            },
-            // Including Project info as per your second example
-            {
-                model: Project,
-                attributes: ['id', 'name']
-            }
+          {
+            model: User,
+            as: 'user', 
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role'],
+          },
         ],
-    });
+      },
+      {
+        model: Project,
+        as: 'project', 
+        attributes: ['id', 'name'],
+      },
+    ],
+  });
+
+  return team;
 }
 
 module.exports = {
@@ -128,5 +123,5 @@ module.exports = {
     addMember,
     removeMember,
     getTeams,
-    getProjectTeam
+    getProjectTeam,
 };

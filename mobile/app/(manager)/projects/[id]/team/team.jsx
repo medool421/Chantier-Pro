@@ -30,10 +30,7 @@ export default function ManagerTeam() {
 
       setTeam(teamData);
       setWorkers(teamData?.TeamMembers || []);
-
-      // 2. Fetch All Workers (for adding new ones)
-      const allWorkersRes = await api.get('/users', { params: { role: 'WORKER' } });
-      setAvailableWorkers(allWorkersRes.data?.data || []);
+      
     } catch (error) {
       console.error('Error fetching team data:', error);
       Alert.alert('Erreur', 'Impossible de charger les données de l\'équipe');
