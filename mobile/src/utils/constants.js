@@ -7,7 +7,6 @@ export const TASK_PRIORITY = {
   LOW: 'LOW',
   NORMAL: 'NORMAL',
   HIGH: 'HIGH',
-  URGENT: 'URGENT',
 };
 
 /**
@@ -17,8 +16,7 @@ export const TASK_PRIORITY_LABELS = {
   LOW: 'Basse',
   NORMAL: 'Normale',
   HIGH: 'Haute',
-  URGENT: 'Urgente',
-};
+};  
 
 /**
  * Task Status Constants
