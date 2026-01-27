@@ -130,17 +130,38 @@ async function updateTask(taskId, updates) {
     throw new AppError('Task not found', 404);
   }
 
-  if (updates.assignedTo) {
-    const assignee = await User.findByPk(updates.assignedTo);
-    if (!assignee) {
-      throw new AppError('Assignee user not found', 404);
-    }
-    if (assignee.role !== 'WORKER') {
-      throw new AppError('Tasks can only be assigned to WORKER role', 400);
+  // ASSIGNEE CHECK
+  if ('assigneeId' in updates) {
+    if (updates.assigneeId === null) {
+      task.assigneeId = null;
+    } else {
+      const assignee = await User.findByPk(updates.assigneeId);
+
+      if (!assignee) {
+        throw new AppError('Assignee user not found', 404);
+      }
+
+      if (assignee.role !== 'WORKER') {
+        throw new AppError('Tasks can only be assigned to WORKER role', 400);
+      }
+
+      task.assigneeId = updates.assigneeId;
+      task.assignedTo = updates.assigneeId;
     }
   }
 
-  await task.update(updates);
+  // DUE DATE
+  if ('dueDate' in updates) {
+    task.dueDate = updates.dueDate;
+  }
+
+  // ALLOWED DIRECT FIELDS
+  if ('title' in updates) task.title = updates.title;
+  if ('description' in updates) task.description = updates.description;
+  if ('priority' in updates) task.priority = updates.priority;
+  if ('status' in updates) task.status = updates.status;
+
+  await task.save();
 
   return Task.findByPk(taskId, {
     include: [
@@ -157,6 +178,7 @@ async function updateTask(taskId, updates) {
     ],
   });
 }
+
 
 
 // Update task status with permission check

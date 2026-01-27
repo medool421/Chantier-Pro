@@ -10,8 +10,11 @@ exports.createTaskSchema = Joi.object({
 exports.updateTaskSchema = Joi.object({
   title: Joi.string().min(3).max(100),
   description: Joi.string().allow('', null),
-  priority: Joi.string().valid('LOW', 'NORMAL', 'HIGH'),
+  priority: Joi.string().valid('LOW', 'NORMAL', 'HIGH', 'URGENT'),
+  assigneeId: Joi.string().uuid().allow(null),
+  dueDate: Joi.date().allow(null),
 });
+
 
 exports.updateTaskStatusSchema = Joi.object({
   status: Joi.string()
