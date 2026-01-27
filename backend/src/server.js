@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./docs/swagger');
 
 const { sequelize } = require('./config/database');
 require('./models'); // load models & associations
@@ -31,6 +33,7 @@ const app = express();
    STATIC FILES (UPLOADS)
 ====================== */
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 /* ======================
    ROUTES
