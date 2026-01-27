@@ -4,7 +4,9 @@ const seedProjects = async () => {
   console.log('🏗 Seeding projects...');
 
   const boss = await User.findOne({ where: { role: 'BOSS' } });
-  const manager = await User.findOne({ where: { email: 'manager1@test.com' } });
+  const manager1 = await User.findOne({ where: { email: 'manager1@test.com' } });
+  const manager2 = await User.findOne({ where: { email: 'manager2@test.com' } });
+  const manager3 = await User.findOne({ where: { email: 'manager3@test.com' } });
 
   const projects = [
     {
@@ -13,7 +15,7 @@ const seedProjects = async () => {
       address: 'Casablanca',
       status: 'IN_PROGRESS',
       bossId: boss.id,
-      managerId: manager.id,
+      managerId: manager1.id,
     },
     {
       name: 'Chantier B',
@@ -21,7 +23,7 @@ const seedProjects = async () => {
       address: 'Rabat',
       status: 'PLANNED',
       bossId: boss.id,
-      managerId: manager.id,
+      managerId: manager2.id,
     },
     {
       name: 'Chantier C',
@@ -29,7 +31,7 @@ const seedProjects = async () => {
       address: 'Agadir',
       status: 'PLANNED',
       bossId: boss.id,
-      managerId: null,
+      managerId: manager3.id,
     },
   ];
 

@@ -6,7 +6,7 @@ const seedProjects = require('./seedProjects');
 const seedTeams = require('./seedTeams');
 const seedTasks = require('./seedTasks');
 const seedReports = require('./seedReports');
-const seedTeamMembers =require("./seedTeamMembers")
+const seedTeamMembers = require('./seedTeamMembers');
 
 const seed = async () => {
   try {
@@ -14,13 +14,16 @@ const seed = async () => {
 
     await sequelize.authenticate();
 
+    console.log('🧹 Dropping all tables...');
+    await sequelize.sync({ force: true }); 
+    console.log('✅ Database reset complete\n');
+
     await seedUsers();
     await seedProjects();
     await seedTeams();
     await seedTeamMembers();
     await seedTasks();
     await seedReports();
-
 
     console.log('✨ DATABASE SEEDED SUCCESSFULLY ✨\n');
     process.exit(0);
