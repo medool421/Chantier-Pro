@@ -6,7 +6,6 @@ module.exports = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // Pas de token = 401
       throw new AppError('Unauthorized: No token provided', 401);
     }
 
