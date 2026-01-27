@@ -67,11 +67,10 @@ const handleLogin = async () => {
         </Text>
       </Pressable>
 
-      <Pressable onPress={() => router.push('/(auth)/register')}>
+    
         <Text style={styles.link}>
-          Pas encore de compte ? S’inscrire
+          Pas encore de compte ? Contactez nous !
         </Text>
-      </Pressable>
     </View>
   );
 }

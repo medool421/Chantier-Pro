@@ -58,8 +58,15 @@ async function getProjectById(id, userId) {
     throw new AppError('Project not found or access denied', 404);
   }
 
-  return project;
+  // ADD THIS
+  const progress = await calculateProgress(project.id);
+
+  return {
+    ...project.toJSON(),
+    progressPercentage: progress,
+  };
 }
+
 
 async function updateProject(id, data, userId) {
   const project = await getProjectById(id, userId);
@@ -124,17 +131,20 @@ async function getManagers() {
 }
 
 async function calculateProgress(projectId) {
-  const tasks = await Task.findAll({ where: { projectId } });
+  const totalTasks = await Task.count({ where: { projectId } });
 
-  if (tasks.length === 0) return 0;
+  if (totalTasks === 0) return 0;
 
-  const total = tasks.reduce(
-    (sum, task) => sum + Number(task.progressPercentage || 0),
-    0
-  );
+  const completedTasks = await Task.count({
+    where: {
+      projectId,
+      status: 'COMPLETED',
+    },
+  });
 
-  return Number((total / tasks.length).toFixed(2));
+  return Math.round((completedTasks / totalTasks) * 100);
 }
+
 
 async function getProjectByManager(managerId) {
   const project = await Project.findAll({
