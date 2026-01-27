@@ -38,6 +38,18 @@ export default function BossLayout() {
                 }}
             />
             <Stack.Screen
+                name="projects/[id]/tasks"
+                options={{
+                    title: 'Taches du Chantier'
+                }}
+            />
+            <Stack.Screen
+                name="projects/[id]/team"
+                options={{
+                    title: 'Equipe du Chantier'
+                }}
+            />
+            <Stack.Screen
                 name="projects/assign-manager"
                 options={{
                     title: 'Assigner un Chef d\'équipe'

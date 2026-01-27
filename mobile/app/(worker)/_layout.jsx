@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { colors } from '../../src/theme/colors';
 
-export default function ManagerLayout() {
+export default function WorkerLayout() {
   return (
     <Stack
       screenOptions={{
@@ -22,47 +22,18 @@ export default function ManagerLayout() {
         name="index"
         options={{
           title: 'Tableau de bord',
-        }}
-      />
-
-      {/* Project details */}
-      <Stack.Screen
-        name="projects/[id]"
-        options={{
-          title: 'Détails du Projet',
+          headerShown:false,
         }}
       />
 
       {/* Project tasks */}
       <Stack.Screen
-        name="projects/[id]/tasks/index"
+        name="tasks/[id]"
         options={{
-          title: 'Tâches du Projet',
+          title: 'Details de Tache',
         }}
       />
 
-      <Stack.Screen
-        name="projects/[id]/tasks/[id]"
-        options={{
-          title: 'Details de Tâche',
-        }}
-      />
-
-      {/* Create task */}
-      <Stack.Screen
-        name="projects/[id]/tasks/create"
-        options={{
-          title: 'Nouvelle Tâche',
-        }}
-      />
-
-      {/* Team */}
-      <Stack.Screen
-        name="projects/[id]/team/team"
-        options={{
-          title: 'Équipe du Projet',
-        }}
-      />
 
       {/* Profile */}
       <Stack.Screen

@@ -1,6 +1,3 @@
-// ============================================
-// app/(worker)/index.jsx - DASHBOARD WORKER (MES TÂCHES)
-// ============================================
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -26,7 +23,7 @@ export default function WorkerDashboard() {
 
   const fetchMyTasks = async () => {
     try {
-      const response = await api.get('/tasks/my');
+      const response = await api.get('/tasks/tasks/my');
       setTasks(response.data.data || []);
     } catch (error) {
       console.error(error);
@@ -221,7 +218,7 @@ const styles = StyleSheet.create({
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   taskTitle: { fontSize: 16, fontWeight: '600', color: colors.textDark, marginBottom: 4 },
   projectName: { fontSize: 12, color: colors.textMuted },
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8},
   priorityText: { fontSize: 10, fontWeight: '600', color: colors.textDark },
   taskDescription: { fontSize: 14, color: colors.textMuted, marginBottom: 12, lineHeight: 20 },
   taskFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -234,4 +231,3 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textDark, fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 },
   emptySubtext: { color: colors.textMuted, fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
 });
-

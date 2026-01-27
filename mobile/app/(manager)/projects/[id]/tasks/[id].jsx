@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
-import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
+import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import api from '../../../../../src/api/axios';
 
 export default function ManagerTaskDetail() {
@@ -17,6 +17,8 @@ export default function ManagerTaskDetail() {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [assignees, setAssignees] = useState([]);
+
 
   useEffect(() => {
     fetchTaskDetails();
@@ -35,9 +37,27 @@ export default function ManagerTaskDetail() {
     }
   };
 
+  const fetchAssignees = async () => {
+  try {
+    const res = await api.get(`/projects/${task.projectId}/team`);
+    const team = res.data.data;
+    setAssignees(team.members || []);
+  } catch (e) {
+    console.log('failed to load assignees');
+  }
+};
+
+useEffect(() => {
+  if (task?.projectId) {
+    fetchAssignees();
+  }
+}, [task?.projectId]);
+
+
+
   const handleUpdateStatus = async (newStatus) => {
     try {
-      await api.patch(`/tasks/${id}/status`, { status: newStatus });
+      await api.patch(`/tasks/tasks/${id}/status`, { status: newStatus });
       setTask({ ...task, status: newStatus });
       setStatusModalVisible(false);
       Alert.alert('Succès', 'Statut mis à jour');
@@ -48,11 +68,12 @@ export default function ManagerTaskDetail() {
 
   const handleUpdateTask = async () => {
     try {
-      const response = await api.put(`/tasks/${id}`, {
-        title: editForm.title,
-        description: editForm.description,
-        dueDate: editForm.dueDate,
-        priority: editForm.priority,
+      const response = await api.put(`/tasks/tasks/${id}`, {
+  title: editForm.title,
+  description: editForm.description,
+  priority: editForm.priority,
+  dueDate: editForm.dueDate,
+  assigneeId: editForm.assigneeId,
       });
       setTask(response.data.data);
       setEditModalVisible(false);
@@ -195,44 +216,139 @@ export default function ManagerTaskDetail() {
       </Modal>
 
       {/* EDIT MODAL */}
-      <Modal visible={editModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView>
-              <Text style={styles.modalTitle}>Modifier la tâche</Text>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Titre</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editForm.title}
-                  onChangeText={(t) => setEditForm({ ...editForm, title: t })}
-                />
-              </View>
+      {/* EDIT MODAL */}
+<Modal visible={editModalVisible} transparent animationType="slide">
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      <ScrollView>
+        <Text style={styles.modalTitle}>Modifier la tâche</Text>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Description</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={editForm.description}
-                  onChangeText={(t) => setEditForm({ ...editForm, description: t })}
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-
-              <View style={styles.buttonRow}>
-                <TouchableOpacity style={styles.modalCancelButton} onPress={() => setEditModalVisible(false)}>
-                  <Text style={styles.modalCancelText}>Annuler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalSaveButton} onPress={handleUpdateTask}>
-                  <Text style={styles.modalSaveText}>Enregistrer</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
+        {/* TITLE */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Titre</Text>
+          <TextInput
+            style={styles.input}
+            value={editForm.title}
+            onChangeText={(t) => setEditForm({ ...editForm, title: t })}
+          />
         </View>
-      </Modal>
+
+        {/* DESCRIPTION */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={editForm.description}
+            onChangeText={(t) => setEditForm({ ...editForm, description: t })}
+            multiline
+          />
+        </View>
+
+        {/* DUE DATE */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Date d’échéance (YYYY-MM-DD)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="2026-02-01"
+            // value={
+            //   editForm.dueDate
+            //     ? editForm.dueDate.slice(0, 10)
+            //     : ''
+            // }
+            // onChangeText={(d) =>
+            //   setEditForm({
+            //     ...editForm,
+            //     dueDate: d ? new Date(d).toISOString() : null,
+            //   })
+            // }
+          />
+        </View>
+
+       {/* PRIORITY */}
+<View style={styles.formGroup}>
+  <Text style={styles.label}>Priorité</Text>
+
+  <View style={styles.priorityRow}>
+    {Object.values(TASK_PRIORITY).map((p) => (
+      <TouchableOpacity
+        key={p}
+        style={[
+          styles.priorityOption,
+          editForm.priority === p && styles.prioritySelected,
+        ]}
+        onPress={() => setEditForm({ ...editForm, priority: p })}
+      >
+        <Text
+          style={[
+            styles.priorityOptionText,
+            editForm.priority === p && styles.prioritySelectedText,
+          ]}
+        >
+          {TASK_PRIORITY_LABELS[p]}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+</View>
+{/* ASSIGNEE */}
+<View style={styles.formGroup}>
+  <Text style={styles.label}>Assigné à</Text>
+
+  {assignees.map((m) => {
+    const u = m.user;
+
+    return (
+      <TouchableOpacity
+        key={m.userId}
+        style={[
+          styles.assigneeOption,
+          editForm.assigneeId === m.userId && styles.assigneeSelected,
+        ]}
+        onPress={() =>
+          setEditForm({ ...editForm, assigneeId: m.userId })
+        }
+      >
+        <View style={styles.avatarSmall}>
+          <Text style={styles.avatarSmallText}>
+            {u.firstName?.[0]}{u.lastName?.[0]}
+          </Text>
+        </View>
+
+        <Text style={styles.assigneeOptionText}>
+          {u.firstName} {u.lastName}
+        </Text>
+
+        {editForm.assigneeId === m.userId && (
+          <Ionicons name="checkmark" size={18} color={colors.primary} />
+        )}
+      </TouchableOpacity>
+    );
+  })}
+</View>
+
+
+
+        {/* ACTIONS */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.modalCancelButton}
+            onPress={() => setEditModalVisible(false)}
+          >
+            <Text style={styles.modalCancelText}>Annuler</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalSaveButton}
+            onPress={handleUpdateTask}
+          >
+            <Text style={styles.modalSaveText}>Enregistrer</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  </View>
+</Modal>
+
     </View>
   );
 }
@@ -280,7 +396,7 @@ const styles = StyleSheet.create({
   selectedOption: { backgroundColor: colors.primaryLight },
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   statusOptionText: { flex: 1, fontSize: 16, color: colors.textDark },
-  modalCancelButton: { padding: 16, alignItems: 'center', marginTop: 12 },
+  modalCancelButton: { padding: 6, alignItems: 'center', marginTop: 12 },
   modalCancelText: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
   formGroup: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '600', color: colors.textDark, marginBottom: 8 },
@@ -289,4 +405,67 @@ const styles = StyleSheet.create({
   buttonRow: { flexDirection: 'row', gap: 12 },
   modalSaveButton: { flex: 1, backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
   modalSaveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  priorityRow: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+},
+
+priorityOption: {
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  borderRadius: 20,
+  backgroundColor: '#F0F0F0',
+},
+
+prioritySelected: {
+  backgroundColor: colors.primary,
+},
+
+priorityOptionText: {
+  fontSize: 14,
+  color: colors.textDark,
+  fontWeight: '600',
+},
+
+prioritySelectedText: {
+  color: '#fff',
+},
+assigneeOption: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 12,
+  borderRadius: 12,
+  backgroundColor: '#F5F5F5',
+  marginBottom: 8,
+},
+
+assigneeSelected: {
+  backgroundColor: colors.primaryLight,
+},
+
+assigneeOptionText: {
+  flex: 1,
+  fontSize: 14,
+  color: colors.textDark,
+  fontWeight: '600',
+},
+
+avatarSmall: {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  backgroundColor: colors.primaryLight,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12,
+},
+
+avatarSmallText: {
+  fontSize: 12,
+  fontWeight: 'bold',
+  color: colors.primary,
+},
+
+
 });

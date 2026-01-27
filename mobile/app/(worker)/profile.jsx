@@ -1,74 +1,144 @@
-// ============================================
-// app/(worker)/profile.jsx - PROFIL WORKER
-// ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import { useAuthStore } from '../../src/store/auth.store';
 import { colors } from '../../src/theme/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-export default function WorkerProfile() {
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
+export default function Profile() {
+    const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
+    const router = useRouter();
 
-  const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Déconnexion',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
-  };
+    const handleLogout = () => {
+        Alert.alert(
+            "Déconnexion",
+            "Êtes-vous sûr de vouloir vous déconnecter ?",
+            [
+                { text: "Annuler", style: "cancel" },
+                {
+                    text: "Oui",
+                    style: "destructive",
+                    onPress: async () => {
+                        await logout();
+                        router.replace('/(auth)/login'); // Or simply let the auth state change trigger navigation if setup in root layout
+                    }
+                }
+            ]
+        );
+    };
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.avatarLarge}>
-          <Text style={styles.avatarLargeText}>{user?.firstName?.[0]}{user?.lastName?.[0]}</Text>
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <View style={styles.avatarContainer}>
+                    <Text style={styles.avatarText}>
+                        {(user?.firstName?.[0] || 'U').toUpperCase()}
+                    </Text>
+                </View>
+                <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+                <Text style={styles.role}>Ouvrier</Text>
+            </View>
+
+            <View style={styles.infoSection}>
+                <View style={styles.infoItem}>
+                    <Ionicons name="mail-outline" size={24} color={colors.textMuted} />
+                    <View style={styles.infoTextContainer}>
+                        <Text style={styles.infoLabel}>Email</Text>
+                        <Text style={styles.infoValue}>{user?.email}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.infoItem}>
+                    <Ionicons name="call-outline" size={24} color={colors.textMuted} />
+                    <View style={styles.infoTextContainer}>
+                        <Text style={styles.infoLabel}>Téléphone</Text>
+                        <Text style={styles.infoValue}>{user?.phone || 'Non renseigné'}</Text>
+                    </View>
+                </View>
+            </View>
+
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={24} color="#D32F2F" />
+                <Text style={styles.logoutText}>Se Déconnecter</Text>
+            </TouchableOpacity>
         </View>
-        <Text style={styles.userName}>{user?.firstName} {user?.lastName}</Text>
-        <Text style={styles.userRole}>Ouvrier 👷</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Informations</Text>
-        <View style={styles.infoCard}>
-          <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
-          <Text style={styles.infoText}>{user?.email}</Text>
-        </View>
-        {user?.phone && (
-          <View style={styles.infoCard}>
-            <Ionicons name="call-outline" size={20} color={colors.textMuted} />
-            <Text style={styles.infoText}>{user?.phone}</Text>
-          </View>
-        )}
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Ionicons name="log-out-outline" size={20} color={colors.error} />
-        <Text style={styles.logoutText}>Déconnexion</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.backgroundLight },
-  header: { alignItems: 'center', padding: 40, backgroundColor: '#fff' },
-  avatarLarge: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  avatarLargeText: { fontSize: 36, fontWeight: 'bold', color: colors.primary },
-  userName: { fontSize: 24, fontWeight: 'bold', color: colors.textDark },
-  userRole: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
-  section: { padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textDark, marginBottom: 12 },
-  infoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 8 },
-  infoText: { marginLeft: 12, fontSize: 16, color: colors.textDark },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 20, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.error },
-  logoutText: { color: colors.error, fontWeight: '600', marginLeft: 8 },
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+        padding: 24,
+    },
+    header: {
+        alignItems: 'center',
+        marginBottom: 40,
+        marginTop: 20,
+    },
+    avatarContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#F0F0F0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+        borderWidth: 2,
+        borderColor: colors.primary,
+    },
+    avatarText: {
+        fontSize: 40,
+        fontWeight: 'bold',
+        color: colors.primary,
+    },
+    name: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: colors.textDark,
+        marginBottom: 4,
+    },
+    role: {
+        fontSize: 14,
+        color: colors.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    infoSection: {
+        marginBottom: 40,
+    },
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F5F5F5',
+    },
+    infoTextContainer: {
+        marginLeft: 16,
+    },
+    infoLabel: {
+        fontSize: 12,
+        color: colors.textMuted,
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 16,
+        color: colors.textDark,
+    },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFEBEE',
+        padding: 16,
+        borderRadius: 12,
+    },
+    logoutText: {
+        color: '#D32F2F',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 8,
+    },
 });

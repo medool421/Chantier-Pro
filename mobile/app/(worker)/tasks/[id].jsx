@@ -1,6 +1,3 @@
-// ============================================
-// app/(worker)/tasks/[id].jsx - DÉTAIL TÂCHE WORKER
-// ============================================
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,7 +19,7 @@ export default function WorkerTaskDetail() {
 
   const fetchTaskDetails = async () => {
     try {
-      const response = await api.get(`/tasks/${id}`);
+      const response = await api.get(`/tasks/tasks/${id}`);
       setTask(response.data.data);
     } catch (error) {
       console.error(error);
@@ -34,7 +31,7 @@ export default function WorkerTaskDetail() {
 
   const handleUpdateStatus = async (newStatus) => {
     try {
-      await api.patch(`/tasks/${id}/status`, { status: newStatus });
+      await api.patch(`/tasks/tasks/${id}/status`, { status: newStatus });
       setTask({ ...task, status: newStatus });
       setStatusModalVisible(false);
       Alert.alert('Succès', 'Statut mis à jour');

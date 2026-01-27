@@ -273,7 +273,7 @@ export default function ProjectDetails() {
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.actionCard}
             onPress={() => router.push({
               pathname: '/(boss)/projects/[id]/files',
@@ -288,7 +288,7 @@ export default function ProjectDetails() {
               <Text style={styles.actionCardSubtitle}>Plans et documents</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Delete Button */}
