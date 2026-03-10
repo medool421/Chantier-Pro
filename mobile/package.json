@@ -10,6 +10,7 @@
     "deploy": "npx expo export -p web && npx eas-cli@latest deploy"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.2",
     "expo": "^54.0.1",
     "expo-router": "~6.0.21",

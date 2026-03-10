@@ -1,46 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../src/theme/colors';
 import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../src/utils/constants';
-import api from '../../../src/api/axios';
+import { useTask, useUpdateTaskStatus } from '../../../src/hooks/useTasks';
 
 export default function WorkerTaskDetail() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
-  const [task, setTask] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
 
-  useEffect(() => {
-    fetchTaskDetails();
-  }, [id]);
+  // ─── Query ────────────────────────────────────────────────────────────────
+  const { data: task, isLoading } = useTask(id);
 
-  const fetchTaskDetails = async () => {
-    try {
-      const response = await api.get(`/tasks/tasks/${id}`);
-      setTask(response.data.data);
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Erreur', 'Impossible de charger la tâche');
-    } finally {
-      setLoading(false);
-    }
+  // ─── Mutation ─────────────────────────────────────────────────────────────
+  const updateStatusMutation = useUpdateTaskStatus(id);
+
+  const handleUpdateStatus = (newStatus) => {
+    updateStatusMutation.mutate(newStatus, {
+      onSuccess: () => {
+        setStatusModalVisible(false);
+        Alert.alert('Succès', 'Statut mis à jour');
+      },
+      onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour le statut'),
+    });
   };
 
-  const handleUpdateStatus = async (newStatus) => {
-    try {
-      await api.patch(`/tasks/tasks/${id}/status`, { status: newStatus });
-      setTask({ ...task, status: newStatus });
-      setStatusModalVisible(false);
-      Alert.alert('Succès', 'Statut mis à jour');
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour le statut');
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -53,14 +39,11 @@ export default function WorkerTaskDetail() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         <View style={styles.card}>
           <Text style={styles.taskTitle}>{task.title}</Text>
 
-          <TouchableOpacity 
-            style={styles.statusContainer}
-            onPress={() => setStatusModalVisible(true)}
-          >
+          <TouchableOpacity style={styles.statusContainer} onPress={() => setStatusModalVisible(true)}>
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) }]}>
               <Text style={styles.statusText}>{TASK_STATUS_LABELS[task.status]}</Text>
             </View>
@@ -69,9 +52,7 @@ export default function WorkerTaskDetail() {
           </TouchableOpacity>
 
           <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) }]}>
-            <Text style={styles.priorityText}>
-              Priorité: {TASK_PRIORITY_LABELS[task.priority]}
-            </Text>
+            <Text style={styles.priorityText}>Priorité: {TASK_PRIORITY_LABELS[task.priority]}</Text>
           </View>
 
           {task.description && (
@@ -90,54 +71,63 @@ export default function WorkerTaskDetail() {
           {task.project && (
             <View style={styles.infoRow}>
               <Ionicons name="briefcase-outline" size={18} color={colors.textMuted} />
-              <Text style={styles.infoText}>
-                Projet: {task.project.name}
-              </Text>
+              <Text style={styles.infoText}>Projet: {task.project.name}</Text>
             </View>
           )}
         </View>
 
+        {/* Quick actions — only show relevant next step */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions Rapides</Text>
-          
+
           {task.status === 'TODO' && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
               onPress={() => handleUpdateStatus('IN_PROGRESS')}
+              disabled={updateStatusMutation.isPending}
             >
               <Ionicons name="play-outline" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Commencer la tâche</Text>
+              <Text style={styles.actionButtonText}>
+                {updateStatusMutation.isPending ? 'Mise à jour...' : 'Commencer la tâche'}
+              </Text>
             </TouchableOpacity>
           )}
 
           {task.status === 'IN_PROGRESS' && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.success }]}
+              style={[styles.actionButton, { backgroundColor: colors.success || '#388E3C' }]}
               onPress={() => handleUpdateStatus('COMPLETED')}
+              disabled={updateStatusMutation.isPending}
             >
               <Ionicons name="checkmark-outline" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Marquer comme terminée</Text>
+              <Text style={styles.actionButtonText}>
+                {updateStatusMutation.isPending ? 'Mise à jour...' : 'Marquer comme terminée'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
 
       </ScrollView>
 
-      <Modal visible={statusModalVisible} transparent animationType="slide">
+      {/* STATUS MODAL */}
+      <Modal visible={statusModalVisible} transparent animationType="slide" onRequestClose={() => setStatusModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Changer le statut</Text>
-            {Object.entries(TASK_STATUS).filter(([k, v]) => v !== 'BLOCKED').map(([key, value]) => (
-              <TouchableOpacity
-                key={value}
-                style={[styles.statusOption, task.status === value && styles.selectedOption]}
-                onPress={() => handleUpdateStatus(value)}
-              >
-                <View style={[styles.statusDot, { backgroundColor: getStatusColor(value) }]} />
-                <Text style={styles.statusOptionText}>{TASK_STATUS_LABELS[value]}</Text>
-                {task.status === value && <Ionicons name="checkmark" size={20} color={colors.primary} />}
-              </TouchableOpacity>
-            ))}
+            {Object.entries(TASK_STATUS)
+              .filter(([, v]) => v !== 'BLOCKED')
+              .map(([, value]) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.statusOption, task.status === value && styles.selectedOption]}
+                  onPress={() => handleUpdateStatus(value)}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  <View style={[styles.statusDot, { backgroundColor: getStatusColor(value) }]} />
+                  <Text style={styles.statusOptionText}>{TASK_STATUS_LABELS[value]}</Text>
+                  {task.status === value && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              ))}
             <TouchableOpacity style={styles.modalCancelButton} onPress={() => setStatusModalVisible(false)}>
               <Text style={styles.modalCancelText}>Annuler</Text>
             </TouchableOpacity>
@@ -148,18 +138,8 @@ export default function WorkerTaskDetail() {
   );
 }
 
-const getStatusColor = (status) => ({
-  TODO: '#E3F2FD',
-  IN_PROGRESS: '#E8F5E9',
-  COMPLETED: '#F3E5F5',
-}[status]);
-
-const getPriorityColor = (priority) => ({
-  LOW: '#E8F5E9',
-  NORMAL: '#E3F2FD',
-  HIGH: '#FFF3E0',
-  URGENT: '#FFEBEE',
-}[priority]);
+const getStatusColor = (s) => ({ TODO: '#E3F2FD', IN_PROGRESS: '#E8F5E9', COMPLETED: '#F3E5F5' }[s] || '#F5F5F5');
+const getPriorityColor = (p) => ({ LOW: '#E8F5E9', NORMAL: '#E3F2FD', HIGH: '#FFF3E0', URGENT: '#FFEBEE' }[p] || '#F5F5F5');
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.backgroundLight },

@@ -1,86 +1,63 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  ActivityIndicator, Alert, Modal, TextInput 
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, Modal, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
 import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
-import api from '../../../../../src/api/axios';
+import { useTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../../../../../src/hooks/useTasks';
+import { useProjectTeam } from '../../../../../src/hooks/useProjects';
 
 export default function ManagerTaskDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [task, setTask] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editForm, setEditForm] = useState({});
-  const [assignees, setAssignees] = useState([]);
 
+  // ─── Queries ─────────────────────────────────────────────────────────────
+  const { data: task, isLoading } = useTask(id);
+  const { data: teamData } = useProjectTeam(task?.projectId);
+  const assignees = teamData?.members || [];
 
   useEffect(() => {
-    fetchTaskDetails();
-  }, [id]);
+    if (task) setEditForm(task);
+  }, [task?.id]);
 
-  const fetchTaskDetails = async () => {
-    try {
-      const response = await api.get(`tasks/tasks/${id}`);
-      setTask(response.data.data);
-      setEditForm(response.data.data);
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Erreur', 'Impossible de charger la tâche');
-    } finally {
-      setLoading(false);
-    }
+  // ─── Mutations ────────────────────────────────────────────────────────────
+  const updateStatusMutation = useUpdateTaskStatus(id, task?.projectId);
+  const updateTaskMutation = useUpdateTask(id, task?.projectId);
+  const deleteTaskMutation = useDeleteTask(task?.projectId);
+
+  const handleUpdateStatus = (newStatus) => {
+    updateStatusMutation.mutate(newStatus, {
+      onSuccess: () => {
+        setStatusModalVisible(false);
+        Alert.alert('Succès', 'Statut mis à jour');
+      },
+      onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour le statut'),
+    });
   };
 
-  const fetchAssignees = async () => {
-  try {
-    const res = await api.get(`/projects/${task.projectId}/team`);
-    const team = res.data.data;
-    setAssignees(team.members || []);
-  } catch (e) {
-    console.log('failed to load assignees');
-  }
-};
-
-useEffect(() => {
-  if (task?.projectId) {
-    fetchAssignees();
-  }
-}, [task?.projectId]);
-
-
-
-  const handleUpdateStatus = async (newStatus) => {
-    try {
-      await api.patch(`/tasks/tasks/${id}/status`, { status: newStatus });
-      setTask({ ...task, status: newStatus });
-      setStatusModalVisible(false);
-      Alert.alert('Succès', 'Statut mis à jour');
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour le statut');
-    }
-  };
-
-  const handleUpdateTask = async () => {
-    try {
-      const response = await api.put(`/tasks/tasks/${id}`, {
-  title: editForm.title,
-  description: editForm.description,
-  priority: editForm.priority,
-  dueDate: editForm.dueDate,
-  assigneeId: editForm.assigneeId,
-      });
-      setTask(response.data.data);
-      setEditModalVisible(false);
-      Alert.alert('Succès', 'Tâche mise à jour');
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour la tâche');
-    }
+  const handleUpdateTask = () => {
+    updateTaskMutation.mutate(
+      {
+        title: editForm.title,
+        description: editForm.description,
+        priority: editForm.priority,
+        dueDate: editForm.dueDate,
+        assigneeId: editForm.assigneeId,
+      },
+      {
+        onSuccess: () => {
+          setEditModalVisible(false);
+          Alert.alert('Succès', 'Tâche mise à jour');
+        },
+        onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour la tâche'),
+      }
+    );
   };
 
   const handleDeleteTask = () => {
@@ -92,21 +69,21 @@ useEffect(() => {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/tasks/${id}`);
-              Alert.alert('Succès', 'Tâche supprimée');
-              router.back();
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer la tâche');
-            }
+          onPress: () => {
+            deleteTaskMutation.mutate(id, {
+              onSuccess: () => {
+                Alert.alert('Succès', 'Tâche supprimée');
+                router.back();
+              },
+              onError: () => Alert.alert('Erreur', 'Impossible de supprimer la tâche'),
+            });
           },
         },
       ]
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -119,8 +96,8 @@ useEffect(() => {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* Header */}
+
+        {/* Header Card */}
         <View style={styles.card}>
           <View style={styles.headerRow}>
             <Text style={styles.taskTitle}>{task.title}</Text>
@@ -129,10 +106,7 @@ useEffect(() => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity 
-            style={styles.statusContainer}
-            onPress={() => setStatusModalVisible(true)}
-          >
+          <TouchableOpacity style={styles.statusContainer} onPress={() => setStatusModalVisible(true)}>
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) }]}>
               <Text style={styles.statusText}>{TASK_STATUS_LABELS[task.status]}</Text>
             </View>
@@ -140,30 +114,22 @@ useEffect(() => {
           </TouchableOpacity>
 
           <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) }]}>
-            <Text style={styles.priorityText}>
-              Priorité: {TASK_PRIORITY_LABELS[task.priority]}
-            </Text>
+            <Text style={styles.priorityText}>Priorité: {TASK_PRIORITY_LABELS[task.priority]}</Text>
           </View>
 
-          {task.description && (
-            <Text style={styles.description}>{task.description}</Text>
-          )}
+          {task.description && <Text style={styles.description}>{task.description}</Text>}
 
           {task.dueDate && (
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
-              <Text style={styles.infoText}>
-                Échéance: {new Date(task.dueDate).toLocaleDateString('fr-FR')}
-              </Text>
+              <Text style={styles.infoText}>Échéance: {new Date(task.dueDate).toLocaleDateString('fr-FR')}</Text>
             </View>
           )}
 
           {task.project && (
             <View style={styles.infoRow}>
               <Ionicons name="briefcase-outline" size={18} color={colors.textMuted} />
-              <Text style={styles.infoText}>
-                Projet: {task.project.name}
-              </Text>
+              <Text style={styles.infoText}>Projet: {task.project.name}</Text>
             </View>
           )}
 
@@ -175,25 +141,22 @@ useEffect(() => {
                 </Text>
               </View>
               <View>
-                <Text style={styles.assigneeName}>
-                  {task.assignee.firstName} {task.assignee.lastName}
-                </Text>
+                <Text style={styles.assigneeName}>{task.assignee.firstName} {task.assignee.lastName}</Text>
                 <Text style={styles.assigneeRole}>Assigné à</Text>
               </View>
             </View>
           )}
         </View>
 
-        {/* Delete Button */}
+        {/* Delete */}
         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteTask}>
           <Ionicons name="trash-outline" size={20} color={colors.error} />
           <Text style={styles.deleteButtonText}>Supprimer la tâche</Text>
         </TouchableOpacity>
-
       </ScrollView>
 
       {/* STATUS MODAL */}
-      <Modal visible={statusModalVisible} transparent animationType="slide">
+      <Modal visible={statusModalVisible} transparent animationType="slide" onRequestClose={() => setStatusModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Changer le statut</Text>
@@ -202,6 +165,7 @@ useEffect(() => {
                 key={value}
                 style={[styles.statusOption, task.status === value && styles.selectedOption]}
                 onPress={() => handleUpdateStatus(value)}
+                disabled={updateStatusMutation.isPending}
               >
                 <View style={[styles.statusDot, { backgroundColor: getStatusColor(value) }]} />
                 <Text style={styles.statusOptionText}>{TASK_STATUS_LABELS[value]}</Text>
@@ -216,156 +180,84 @@ useEffect(() => {
       </Modal>
 
       {/* EDIT MODAL */}
-      {/* EDIT MODAL */}
-<Modal visible={editModalVisible} transparent animationType="slide">
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContent}>
-      <ScrollView>
-        <Text style={styles.modalTitle}>Modifier la tâche</Text>
+      <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView>
+              <Text style={styles.modalTitle}>Modifier la tâche</Text>
 
-        {/* TITLE */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Titre</Text>
-          <TextInput
-            style={styles.input}
-            value={editForm.title}
-            onChangeText={(t) => setEditForm({ ...editForm, title: t })}
-          />
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Titre</Text>
+                <TextInput style={styles.input} value={editForm.title} onChangeText={(t) => setEditForm({ ...editForm, title: t })} />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Description</Text>
+                <TextInput style={[styles.input, styles.textArea]} value={editForm.description} onChangeText={(t) => setEditForm({ ...editForm, description: t })} multiline />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Priorité</Text>
+                <View style={styles.priorityRow}>
+                  {Object.values(TASK_PRIORITY).map((p) => (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.priorityOption, editForm.priority === p && styles.prioritySelected]}
+                      onPress={() => setEditForm({ ...editForm, priority: p })}
+                    >
+                      <Text style={[styles.priorityOptionText, editForm.priority === p && styles.prioritySelectedText]}>
+                        {TASK_PRIORITY_LABELS[p]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Assigné à</Text>
+                {assignees.map((m) => {
+                  const u = m.user;
+                  if (!u) return null;
+                  return (
+                    <TouchableOpacity
+                      key={m.userId}
+                      style={[styles.assigneeOption, editForm.assigneeId === m.userId && styles.assigneeSelected]}
+                      onPress={() => setEditForm({ ...editForm, assigneeId: m.userId })}
+                    >
+                      <View style={styles.avatarSmall}>
+                        <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
+                      </View>
+                      <Text style={styles.assigneeOptionText}>{u.firstName} {u.lastName}</Text>
+                      {editForm.assigneeId === m.userId && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={() => setEditModalVisible(false)}>
+                  <Text style={styles.modalCancelText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalSaveButton, updateTaskMutation.isPending && { opacity: 0.7 }]}
+                  onPress={handleUpdateTask}
+                  disabled={updateTaskMutation.isPending}
+                >
+                  <Text style={styles.modalSaveText}>
+                    {updateTaskMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
         </View>
-
-        {/* DESCRIPTION */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={editForm.description}
-            onChangeText={(t) => setEditForm({ ...editForm, description: t })}
-            multiline
-          />
-        </View>
-
-        {/* DUE DATE */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Date d’échéance (YYYY-MM-DD)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="2026-02-01"
-            // value={
-            //   editForm.dueDate
-            //     ? editForm.dueDate.slice(0, 10)
-            //     : ''
-            // }
-            // onChangeText={(d) =>
-            //   setEditForm({
-            //     ...editForm,
-            //     dueDate: d ? new Date(d).toISOString() : null,
-            //   })
-            // }
-          />
-        </View>
-
-       {/* PRIORITY */}
-<View style={styles.formGroup}>
-  <Text style={styles.label}>Priorité</Text>
-
-  <View style={styles.priorityRow}>
-    {Object.values(TASK_PRIORITY).map((p) => (
-      <TouchableOpacity
-        key={p}
-        style={[
-          styles.priorityOption,
-          editForm.priority === p && styles.prioritySelected,
-        ]}
-        onPress={() => setEditForm({ ...editForm, priority: p })}
-      >
-        <Text
-          style={[
-            styles.priorityOptionText,
-            editForm.priority === p && styles.prioritySelectedText,
-          ]}
-        >
-          {TASK_PRIORITY_LABELS[p]}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-</View>
-{/* ASSIGNEE */}
-<View style={styles.formGroup}>
-  <Text style={styles.label}>Assigné à</Text>
-
-  {assignees.map((m) => {
-    const u = m.user;
-
-    return (
-      <TouchableOpacity
-        key={m.userId}
-        style={[
-          styles.assigneeOption,
-          editForm.assigneeId === m.userId && styles.assigneeSelected,
-        ]}
-        onPress={() =>
-          setEditForm({ ...editForm, assigneeId: m.userId })
-        }
-      >
-        <View style={styles.avatarSmall}>
-          <Text style={styles.avatarSmallText}>
-            {u.firstName?.[0]}{u.lastName?.[0]}
-          </Text>
-        </View>
-
-        <Text style={styles.assigneeOptionText}>
-          {u.firstName} {u.lastName}
-        </Text>
-
-        {editForm.assigneeId === m.userId && (
-          <Ionicons name="checkmark" size={18} color={colors.primary} />
-        )}
-      </TouchableOpacity>
-    );
-  })}
-</View>
-
-
-
-        {/* ACTIONS */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.modalCancelButton}
-            onPress={() => setEditModalVisible(false)}
-          >
-            <Text style={styles.modalCancelText}>Annuler</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.modalSaveButton}
-            onPress={handleUpdateTask}
-          >
-            <Text style={styles.modalSaveText}>Enregistrer</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
-  </View>
-</Modal>
-
+      </Modal>
     </View>
   );
 }
 
-const getStatusColor = (status) => ({
-  TODO: '#E3F2FD',
-  IN_PROGRESS: '#E8F5E9',
-  BLOCKED: '#FFEBEE',
-  COMPLETED: '#F3E5F5',
-}[status]);
-
-const getPriorityColor = (priority) => ({
-  LOW: '#E8F5E9',
-  NORMAL: '#E3F2FD',
-  HIGH: '#FFF3E0',
-  URGENT: '#FFEBEE',
-}[priority]);
+const getStatusColor = (s) => ({ TODO: '#E3F2FD', IN_PROGRESS: '#E8F5E9', BLOCKED: '#FFEBEE', COMPLETED: '#F3E5F5' }[s]);
+const getPriorityColor = (p) => ({ LOW: '#E8F5E9', NORMAL: '#E3F2FD', HIGH: '#FFF3E0', URGENT: '#FFEBEE' }[p]);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.backgroundLight },
@@ -402,70 +294,17 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '600', color: colors.textDark, marginBottom: 8 },
   input: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, padding: 12, fontSize: 16 },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
+  priorityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  priorityOption: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F0F0F0' },
+  prioritySelected: { backgroundColor: colors.primary },
+  priorityOptionText: { fontSize: 14, color: colors.textDark, fontWeight: '600' },
+  prioritySelectedText: { color: '#fff' },
+  assigneeOption: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: '#F5F5F5', marginBottom: 8 },
+  assigneeSelected: { backgroundColor: colors.primaryLight },
+  assigneeOptionText: { flex: 1, fontSize: 14, color: colors.textDark, fontWeight: '600' },
+  avatarSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarSmallText: { fontSize: 12, fontWeight: 'bold', color: colors.primary },
   buttonRow: { flexDirection: 'row', gap: 12 },
   modalSaveButton: { flex: 1, backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
   modalSaveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  priorityRow: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: 8,
-},
-
-priorityOption: {
-  paddingHorizontal: 14,
-  paddingVertical: 8,
-  borderRadius: 20,
-  backgroundColor: '#F0F0F0',
-},
-
-prioritySelected: {
-  backgroundColor: colors.primary,
-},
-
-priorityOptionText: {
-  fontSize: 14,
-  color: colors.textDark,
-  fontWeight: '600',
-},
-
-prioritySelectedText: {
-  color: '#fff',
-},
-assigneeOption: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  padding: 12,
-  borderRadius: 12,
-  backgroundColor: '#F5F5F5',
-  marginBottom: 8,
-},
-
-assigneeSelected: {
-  backgroundColor: colors.primaryLight,
-},
-
-assigneeOptionText: {
-  flex: 1,
-  fontSize: 14,
-  color: colors.textDark,
-  fontWeight: '600',
-},
-
-avatarSmall: {
-  width: 32,
-  height: 32,
-  borderRadius: 16,
-  backgroundColor: colors.primaryLight,
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginRight: 12,
-},
-
-avatarSmallText: {
-  fontSize: 12,
-  fontWeight: 'bold',
-  color: colors.primary,
-},
-
-
 });
