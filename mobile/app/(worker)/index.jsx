@@ -1,58 +1,27 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
 import { colors } from '../../src/theme/colors';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../src/utils/constants';
-import api from '../../src/api/axios';
+import { useMyTasks } from '../../src/hooks/useTasks';
 
 export default function WorkerDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('ALL');
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchMyTasks();
-    }, [])
-  );
+  const { data: tasks = [], isLoading, isRefetching, refetch } = useMyTasks();
 
-  const fetchMyTasks = async () => {
-    try {
-      const response = await api.get('/tasks/tasks/my');
-      setTasks(response.data.data || []);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const getFilteredTasks = () =>
+    filter === 'ALL' ? tasks : tasks.filter((t) => t.status === filter);
+
+  const counts = {
+    todo: tasks.filter((t) => t.status === 'TODO').length,
+    inProgress: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
+    completed: tasks.filter((t) => t.status === 'COMPLETED').length,
   };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchMyTasks();
-  };
-
-  const getFilteredTasks = () => {
-    if (filter === 'ALL') return tasks;
-    return tasks.filter(t => t.status === filter);
-  };
-
-  const getTaskCounts = () => {
-    return {
-      all: tasks.length,
-      todo: tasks.filter(t => t.status === 'TODO').length,
-      inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-      completed: tasks.filter(t => t.status === 'COMPLETED').length,
-    };
-  };
-
-  const counts = getTaskCounts();
 
   const renderTaskItem = ({ item }) => (
     <TouchableOpacity
@@ -61,44 +30,30 @@ export default function WorkerDashboard() {
     >
       <View style={styles.taskHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.taskTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={styles.projectName} numberOfLines={1}>
-            📁 {item.project?.name || 'Projet'}
-          </Text>
+          <Text style={styles.taskTitle} numberOfLines={1}>{item.title}</Text>
+          <Text style={styles.projectName} numberOfLines={1}>📁 {item.project?.name || 'Projet'}</Text>
         </View>
         <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) }]}>
-          <Text style={styles.priorityText}>
-            {TASK_PRIORITY_LABELS[item.priority]}
-          </Text>
+          <Text style={styles.priorityText}>{TASK_PRIORITY_LABELS[item.priority]}</Text>
         </View>
       </View>
 
       {item.description && (
-        <Text style={styles.taskDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
+        <Text style={styles.taskDescription} numberOfLines={2}>{item.description}</Text>
       )}
 
       <View style={styles.taskFooter}>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>
-            {TASK_STATUS_LABELS[item.status]}
-          </Text>
+          <Text style={styles.statusText}>{TASK_STATUS_LABELS[item.status]}</Text>
         </View>
-
         {item.dueDate && (
           <View style={styles.dueDateContainer}>
-            <Ionicons 
-              name="calendar-outline" 
-              size={14} 
-              color={isOverdue(item.dueDate) ? colors.error : colors.textMuted} 
+            <Ionicons
+              name="calendar-outline"
+              size={14}
+              color={isOverdue(item.dueDate) ? colors.error : colors.textMuted}
             />
-            <Text style={[
-              styles.dueDateText,
-              isOverdue(item.dueDate) && styles.overdueText
-            ]}>
+            <Text style={[styles.dueDateText, isOverdue(item.dueDate) && styles.overdueText]}>
               {new Date(item.dueDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
             </Text>
           </View>
@@ -115,10 +70,7 @@ export default function WorkerDashboard() {
           <Text style={styles.greeting}>Bonjour,</Text>
           <Text style={styles.username}>{user?.firstName || 'Worker'} 👷</Text>
         </View>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/(worker)/profile')}
-        >
+        <TouchableOpacity onPress={() => router.push('/(worker)/profile')}>
           <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -155,7 +107,7 @@ export default function WorkerDashboard() {
       </View>
 
       {/* Tasks List */}
-      {loading ? (
+      {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -166,15 +118,18 @@ export default function WorkerDashboard() {
           renderItem={renderTaskItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="checkbox-outline" size={64} color={colors.textMuted} />
               <Text style={styles.emptyText}>Aucune tâche</Text>
-              <Text style={styles.emptySubtext}>
-                Votre chef de chantier vous assignera des tâches
-              </Text>
+              <Text style={styles.emptySubtext}>Votre chef de chantier vous assignera des tâches</Text>
             </View>
           }
         />
@@ -184,25 +139,14 @@ export default function WorkerDashboard() {
 }
 
 const isOverdue = (dueDate) => new Date(dueDate) < new Date();
-const getStatusColor = (status) => ({
-  TODO: '#E3F2FD',
-  IN_PROGRESS: '#E8F5E9',
-  BLOCKED: '#FFEBEE',
-  COMPLETED: '#F3E5F5',
-}[status] || '#F5F5F5');
-const getPriorityColor = (priority) => ({
-  LOW: '#E8F5E9',
-  NORMAL: '#E3F2FD',
-  HIGH: '#FFF3E0',
-  URGENT: '#FFEBEE',
-}[priority] || '#F5F5F5');
+const getStatusColor = (s) => ({ TODO: '#E3F2FD', IN_PROGRESS: '#E8F5E9', BLOCKED: '#FFEBEE', COMPLETED: '#F3E5F5' }[s] || '#F5F5F5');
+const getPriorityColor = (p) => ({ LOW: '#E8F5E9', NORMAL: '#E3F2FD', HIGH: '#FFF3E0', URGENT: '#FFEBEE' }[p] || '#F5F5F5');
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.backgroundLight },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 60 },
   greeting: { fontSize: 16, color: colors.textMuted },
   username: { fontSize: 24, fontWeight: 'bold', color: colors.textDark },
-  profileButton: {},
   statsContainer: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginBottom: 20 },
   statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 16, alignItems: 'center' },
   statValue: { fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 4 },
@@ -218,7 +162,7 @@ const styles = StyleSheet.create({
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   taskTitle: { fontSize: 16, fontWeight: '600', color: colors.textDark, marginBottom: 4 },
   projectName: { fontSize: 12, color: colors.textMuted },
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8},
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   priorityText: { fontSize: 10, fontWeight: '600', color: colors.textDark },
   taskDescription: { fontSize: 14, color: colors.textMuted, marginBottom: 12, lineHeight: 20 },
   taskFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -1,90 +1,71 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, RefreshControl
+  ActivityIndicator, Alert, Modal, TextInput, RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../src/theme/colors';
-import api from '../../../src/api/axios';
 import { PROJECT_STATUS, PROJECT_STATUS_LABELS } from '../../../src/utils/constants';
+import {
+  useProject,
+  useUpdateProject,
+  useUpdateProjectStatus,
+  useDeleteProject,
+} from '../../../src/hooks/useProjects';
 
 export default function ProjectDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editForm, setEditForm] = useState({});
 
-  useEffect(() => {
-    if (id) {
-      fetchProjectDetails();
-    }
-  }, [id]);
+  // ─── Queries ───────────────────────────────────────────────────────────────
+  const { data: project, isLoading, isRefetching, refetch } = useProject(id);
 
-  const fetchProjectDetails = async () => {
-    try {
-      const response = await api.get(`/projects/${id}`);
-      setProject(response.data.data);
-      setEditForm(response.data.data);
-    } catch (error) {
-      console.error('Error fetching project:', error);
-      console.error('Error response:', error.response?.data);
-      Alert.alert('Erreur', 'Impossible de charger les détails du projet');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  // Pre-fill edit form when project loads (only once)
+  React.useEffect(() => {
+    if (project) setEditForm(project);
+  }, [project?.id]);
+
+  // ─── Mutations ─────────────────────────────────────────────────────────────
+  const updateStatusMutation = useUpdateProjectStatus(id);
+  const updateProjectMutation = useUpdateProject(id);
+  const deleteProjectMutation = useDeleteProject();
+
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+  const handleUpdateStatus = (newStatus) => {
+    updateStatusMutation.mutate(newStatus, {
+      onSuccess: () => {
+        setStatusModalVisible(false);
+        Alert.alert('Succès', 'Statut mis à jour');
+      },
+      onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour le statut'),
+    });
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchProjectDetails();
-  };
-
-  // ============================================
-  // UPDATE STATUS
-  // ============================================
-  const handleUpdateStatus = async (newStatus) => {
-    try {
-      await api.patch(`/projects/${id}/status`, { status: newStatus });
-      setProject({ ...project, status: newStatus });
-      setStatusModalVisible(false);
-      Alert.alert('Succès', 'Statut mis à jour');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour le statut');
-    }
-  };
-
-  // ============================================
-  // UPDATE PROJECT
-  // ============================================
-  const handleUpdateProject = async () => {
-    try {
-      const response = await api.put(`/projects/${id}`, {
+  const handleUpdateProject = () => {
+    updateProjectMutation.mutate(
+      {
         name: editForm.name,
         description: editForm.description,
         address: editForm.address,
         budget: editForm.budget,
         startDate: editForm.startDate,
         endDate: editForm.endDate,
-      });
-      setProject(response.data.data);
-      setEditModalVisible(false);
-      Alert.alert('Succès', 'Projet mis à jour');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour le projet');
-    }
+      },
+      {
+        onSuccess: () => {
+          setEditModalVisible(false);
+          Alert.alert('Succès', 'Projet mis à jour');
+        },
+        onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour le projet'),
+      }
+    );
   };
 
-  // ============================================
-  // DELETE PROJECT
-  // ============================================
   const handleDeleteProject = () => {
     Alert.alert(
       'Confirmer la suppression',
@@ -94,22 +75,22 @@ export default function ProjectDetails() {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/projects/${id}`);
-              Alert.alert('Succès', 'Projet supprimé');
-              router.back();
-            } catch (error) {
-              console.error(error);
-              Alert.alert('Erreur', 'Impossible de supprimer le projet');
-            }
+          onPress: () => {
+            deleteProjectMutation.mutate(id, {
+              onSuccess: () => {
+                Alert.alert('Succès', 'Projet supprimé');
+                router.back();
+              },
+              onError: () => Alert.alert('Erreur', 'Impossible de supprimer le projet'),
+            });
           },
         },
       ]
     );
   };
 
-  if (loading) {
+  // ─── Render ────────────────────────────────────────────────────────────────
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -131,14 +112,13 @@ export default function ProjectDetails() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
+            refreshing={isRefetching}
+            onRefresh={refetch}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />
         }
       >
-
         {/* Header Card */}
         <View style={styles.card}>
           <View style={styles.headerRow}>
@@ -190,9 +170,7 @@ export default function ProjectDetails() {
           <View style={styles.progressContainer}>
             <Text style={styles.progressLabel}>Progression</Text>
             <View style={styles.progressBar}>
-              <View
-                style={[styles.progressFill, { width: `${project.progressPercentage || 0}%` }]}
-              />
+              <View style={[styles.progressFill, { width: `${project.progressPercentage || 0}%` }]} />
             </View>
             <Text style={styles.progressText}>{project.progressPercentage || 0}%</Text>
           </View>
@@ -223,10 +201,7 @@ export default function ProjectDetails() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push({
-              pathname: '/(boss)/projects/assign-manager',
-              params: { projectId: id }
-            })}
+            onPress={() => router.push({ pathname: '/(boss)/projects/assign-manager', params: { projectId: id } })}
           >
             <Ionicons name="person-add-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.actionButtonText}>
@@ -241,10 +216,7 @@ export default function ProjectDetails() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push({
-              pathname: '/(boss)/projects/[id]/tasks',
-              params: { id }
-            })}
+            onPress={() => router.push({ pathname: '/(boss)/projects/[id]/tasks', params: { id } })}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#E3F2FD' }]}>
               <Ionicons name="checkbox-outline" size={24} color="#1976D2" />
@@ -258,10 +230,7 @@ export default function ProjectDetails() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push({
-              pathname: '/(boss)/projects/[id]/team',
-              params: { id }
-            })}
+            onPress={() => router.push({ pathname: '/(boss)/projects/[id]/team', params: { id } })}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]}>
               <Ionicons name="people-outline" size={24} color="#7B1FA2" />
@@ -272,39 +241,16 @@ export default function ProjectDetails() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
-
-          {/* <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push({
-              pathname: '/(boss)/projects/[id]/files',
-              params: { id }
-            })}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="document-text-outline" size={24} color="#F57C00" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.actionCardTitle}>Fichiers</Text>
-              <Text style={styles.actionCardSubtitle}>Plans et documents</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity> */}
         </View>
 
         {/* Delete Button */}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDeleteProject}
-        >
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
           <Ionicons name="trash-outline" size={20} color={colors.error} />
           <Text style={styles.deleteButtonText}>Supprimer le projet</Text>
         </TouchableOpacity>
-
       </ScrollView>
 
-      {/* ============================================ */}
-      {/* STATUS MODAL */}
-      {/* ============================================ */}
+      {/* ── STATUS MODAL ───────────────────────────────────────────────────── */}
       <Modal
         visible={statusModalVisible}
         transparent
@@ -318,16 +264,12 @@ export default function ProjectDetails() {
             {Object.entries(PROJECT_STATUS).map(([key, value]) => (
               <TouchableOpacity
                 key={value}
-                style={[
-                  styles.statusOption,
-                  project.status === value && styles.selectedOption
-                ]}
+                style={[styles.statusOption, project.status === value && styles.selectedOption]}
                 onPress={() => handleUpdateStatus(value)}
+                disabled={updateStatusMutation.isPending}
               >
                 <View style={[styles.statusDot, { backgroundColor: getStatusColor(value) }]} />
-                <Text style={styles.statusOptionText}>
-                  {PROJECT_STATUS_LABELS[value]}
-                </Text>
+                <Text style={styles.statusOptionText}>{PROJECT_STATUS_LABELS[value]}</Text>
                 {project.status === value && (
                   <Ionicons name="checkmark" size={20} color={colors.primary} />
                 )}
@@ -344,9 +286,7 @@ export default function ProjectDetails() {
         </View>
       </Modal>
 
-      {/* ============================================ */}
-      {/* EDIT MODAL */}
-      {/* ============================================ */}
+      {/* ── EDIT MODAL ─────────────────────────────────────────────────────── */}
       <Modal
         visible={editModalVisible}
         transparent
@@ -406,10 +346,13 @@ export default function ProjectDetails() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.modalSaveButton}
+                  style={[styles.modalSaveButton, updateProjectMutation.isPending && { opacity: 0.7 }]}
                   onPress={handleUpdateProject}
+                  disabled={updateProjectMutation.isPending}
                 >
-                  <Text style={styles.modalSaveText}>Enregistrer</Text>
+                  <Text style={styles.modalSaveText}>
+                    {updateProjectMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -420,306 +363,64 @@ export default function ProjectDetails() {
   );
 }
 
-const getStatusColor = (status) => {
-  const colors = {
-    PLANNED: '#E3F2FD',
-    IN_PROGRESS: '#C8E6C9',
-    ON_HOLD: '#FFF3E0',
-    COMPLETED: '#F3E5F5',
-  };
-  return colors[status] || '#F5F5F5';
-};
+const getStatusColor = (status) => ({
+  PLANNED: '#E3F2FD',
+  IN_PROGRESS: '#C8E6C9',
+  ON_HOLD: '#FFF3E0',
+  COMPLETED: '#F3E5F5',
+}[status] || '#F5F5F5');
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundLight,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    padding: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  projectTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.textDark,
-    flex: 1,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textDark,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  dateText: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  description: {
-    fontSize: 14,
-    color: colors.textDark,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  infoText: {
-    marginLeft: 8,
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  progressContainer: {
-    marginTop: 16,
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-  },
-  progressText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'right',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textDark,
-    marginBottom: 12,
-  },
-  managerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  managerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textDark,
-  },
-  managerEmail: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  emptyManager: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontStyle: 'italic',
-  },
-  actionButton: {
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  actionCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textDark,
-  },
-  actionCardSubtitle: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.error,
-    marginBottom: 40,
-  },
-  deleteButtonText: {
-    color: colors.error,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textDark,
-    marginBottom: 20,
-  },
-  statusOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    backgroundColor: '#F5F5F5',
-  },
-  selectedOption: {
-    backgroundColor: colors.primaryLight,
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  statusOptionText: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.textDark,
-  },
-  modalCancelButton: {
-    paddingHorizontal: 26,
-    paddingVertical: 6,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  modalCancelText: {
-    color: colors.textMuted,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textDark,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalSaveButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalSaveText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: colors.backgroundLight },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scrollContent: { padding: 20 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  projectTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textDark, flex: 1 },
+  statusContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginRight: 8 },
+  statusText: { fontSize: 12, fontWeight: '600', color: colors.textDark },
+  dateRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  dateText: { fontSize: 12, color: colors.textMuted },
+  description: { fontSize: 14, color: colors.textDark, lineHeight: 20, marginBottom: 16 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  infoText: { marginLeft: 8, color: colors.textMuted, fontSize: 14 },
+  progressContainer: { marginTop: 16 },
+  progressLabel: { fontSize: 12, color: colors.textMuted, marginBottom: 8 },
+  progressBar: { height: 8, backgroundColor: '#E0E0E0', borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
+  progressFill: { height: '100%', backgroundColor: colors.primary },
+  progressText: { fontSize: 12, color: colors.textMuted, textAlign: 'right' },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textDark, marginBottom: 12 },
+  managerCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarText: { fontSize: 18, fontWeight: 'bold', color: colors.primary },
+  managerName: { fontSize: 16, fontWeight: '600', color: colors.textDark },
+  managerEmail: { fontSize: 12, color: colors.textMuted },
+  emptyManager: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, alignItems: 'center' },
+  emptyText: { color: colors.textMuted, fontStyle: 'italic' },
+  actionButton: { backgroundColor: colors.primary, padding: 14, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+  actionButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  actionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12 },
+  actionIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  actionCardTitle: { fontSize: 16, fontWeight: '600', color: colors.textDark },
+  actionCardSubtitle: { fontSize: 12, color: colors.textMuted },
+  deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.error, marginBottom: 40 },
+  deleteButtonText: { color: colors.error, fontWeight: '600', marginLeft: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark, marginBottom: 20 },
+  statusOption: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8, backgroundColor: '#F5F5F5' },
+  selectedOption: { backgroundColor: colors.primaryLight },
+  statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  statusOptionText: { flex: 1, fontSize: 16, color: colors.textDark },
+  modalCancelButton: { paddingHorizontal: 26, paddingVertical: 6, alignItems: 'center', marginTop: 12 },
+  modalCancelText: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
+  formGroup: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: colors.textDark, marginBottom: 8 },
+  input: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, padding: 12, fontSize: 16 },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  buttonRow: { flexDirection: 'row', gap: 12 },
+  modalSaveButton: { flex: 1, backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
+  modalSaveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

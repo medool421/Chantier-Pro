@@ -1,7 +1,9 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { useAuthStore } from '../src/store/auth.store'; // Vérifie bien le chemin
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useAuthStore } from '../src/store/auth.store';
+import { queryClient } from '../src/utils/queryClient';
 
 export default function RootLayout() {
   const loadUser = useAuthStore((state) => state.loadUser);
@@ -21,10 +23,8 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (isAuthenticated && inAuthGroup) {
-      // Rediriger vers l'accueil ou le dashboard manager
-      router.replace('/(manager)/tasks'); 
+      router.replace('/');
     } else if (!isAuthenticated && !inAuthGroup) {
-      // Rediriger vers le login
       router.replace('/(auth)/login');
     }
   }, [isAuthenticated, segments, isInitialized]);
@@ -37,5 +37,9 @@ export default function RootLayout() {
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </QueryClientProvider>
+  );
 }
