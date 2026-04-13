@@ -1,8 +1,13 @@
 import api from './axios';
 
 export const projectsService = {
+  // BOSS: all projects
   getAll: () =>
     api.get('/projects').then((r) => r.data.data),
+
+  // MANAGER: projects assigned to this manager
+  getMyProjects: () =>
+    api.get('/projects/my-project').then((r) => r.data.data),
 
   getById: (id) =>
     api.get(`/projects/${id}`).then((r) => r.data.data),
