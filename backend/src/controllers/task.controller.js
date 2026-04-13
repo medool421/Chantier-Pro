@@ -5,13 +5,10 @@ exports.createTask = catchAsync(async (req, res) => {
   const task = await taskService.createTask(
     req.params.projectId,
     req.body,
-    req.user.id
+    req.user           // was req.user.id — service now needs full user for companyId
   );
 
-  res.status(201).json({
-    success: true,
-    data: task,
-  });
+  res.status(201).json({ success: true, data: task });
 });
 
 exports.getProjectTasks = catchAsync(async (req, res) => {
@@ -20,10 +17,7 @@ exports.getProjectTasks = catchAsync(async (req, res) => {
     req.user
   );
 
-  res.json({
-    success: true,
-    data: tasks,
-  });
+  res.json({ success: true, data: tasks });
 });
 
 exports.getTaskById = catchAsync(async (req, res) => {
@@ -32,32 +26,23 @@ exports.getTaskById = catchAsync(async (req, res) => {
     req.user
   );
 
-  res.json({
-    success: true,
-    data: task,
-  });
+  res.json({ success: true, data: task });
 });
 
 exports.getMyTasks = catchAsync(async (req, res) => {
   const tasks = await taskService.getMyTasks(req.user.id);
 
-  res.json({
-    success: true,
-    data: tasks,
-  });
+  res.json({ success: true, data: tasks });
 });
 
 exports.updateTask = catchAsync(async (req, res) => {
   const task = await taskService.updateTask(
     req.params.id,
     req.body,
-    req.user.id
+    req.user           // was req.user.id — service now needs full user for companyId
   );
 
-  res.json({
-    success: true,
-    data: task,
-  });
+  res.json({ success: true, data: task });
 });
 
 exports.updateTaskStatus = catchAsync(async (req, res) => {
@@ -67,13 +52,14 @@ exports.updateTaskStatus = catchAsync(async (req, res) => {
     req.user
   );
 
-  res.json({
-    success: true,
-    data: task,
-  });
+  res.json({ success: true, data: task });
 });
 
 exports.deleteTask = catchAsync(async (req, res) => {
-  await taskService.deleteTask(req.params.id, req.user.id);
+  await taskService.deleteTask(
+    req.params.id,
+    req.user           // was req.user.id — service now needs full user for companyId
+  );
+
   res.status(204).send();
 });
