@@ -29,6 +29,16 @@ const User = sequelize.define('User', {
   },
 
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+  companyId: {
+  type: DataTypes.UUID,
+  allowNull: true,
+},
+status: {
+  type: DataTypes.ENUM('PENDING', 'ACTIVE'),
+  defaultValue: 'ACTIVE',
+},
+  expoPushToken: { type: DataTypes.STRING, allowNull: true },
+
 }, {
   tableName: 'users',
   timestamps: true,
