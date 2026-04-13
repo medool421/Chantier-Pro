@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../src/store/auth.store';
-import { colors } from '../../src/theme/colors';
-import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../src/utils/constants';
-import { useMyTasks } from '../../src/hooks/useTasks';
+import { useAuthStore } from '../../../src/store/auth.store';
+import { colors } from '../../../src/theme/colors';
+import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../src/utils/constants';
+import { useMyTasks } from '../../../src/hooks/useTasks';
+import NotificationBell from '../../../src/components/NotificationBell';
 
 export default function WorkerDashboard() {
   const router = useRouter();
@@ -70,9 +71,12 @@ export default function WorkerDashboard() {
           <Text style={styles.greeting}>Bonjour,</Text>
           <Text style={styles.username}>{user?.firstName || 'Worker'} 👷</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/(worker)/profile')}>
-          <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <NotificationBell />
+                <TouchableOpacity onPress={() => router.push('/(worker)/profile')}>
+                  <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
+                </TouchableOpacity>
+        </View>
       </View>
 
       {/* Stats */}

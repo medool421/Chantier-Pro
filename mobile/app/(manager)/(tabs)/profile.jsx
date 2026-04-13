@@ -5,8 +5,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../src/store/auth.store';
-import { colors } from '../../src/theme/colors';
+import { useAuthStore } from '../../../src/store/auth.store';
+import { colors } from '../../../src/theme/colors';
 
 export default function ManagerProfile() {
   const router = useRouter();

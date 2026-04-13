@@ -17,30 +17,16 @@ export default function WorkerLayout() {
         },
       }}
     >
-      {/* Dashboard */}
       <Stack.Screen
-        name="index"
+        name="(tabs)"
         options={{
-          title: 'Tableau de bord',
-          headerShown:false,
+          headerShown: false,
         }}
       />
-
-      {/* Project tasks */}
       <Stack.Screen
         name="tasks/[id]"
         options={{
-          title: 'Details de Tache',
-        }}
-      />
-
-
-      {/* Profile */}
-      <Stack.Screen
-        name="profile"
-        options={{
-          title: 'Mon Profil',
-          presentation: 'modal',
+          title: 'Détails de la Tâche'
         }}
       />
     </Stack>

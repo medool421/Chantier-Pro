@@ -49,12 +49,15 @@ async function deleteTeam(id) {
     await team.destroy();
 }
 
-async function addMember(teamId, userId, roleInTeam) {
+async function addMember(teamId, userId, roleInTeam, companyId) {
+    
     const team = await Team.findByPk(teamId);
     if (!team) throw new AppError('Team not found', 404);
 
-    const user = await User.findByPk(userId);
-    if (!user) throw new AppError('User not found', 404);
+    const user = await User.findOne({
+    where: { id: userId, companyId }
+    });
+    if (!user) throw new AppError('User not found in your company', 404);
 
     // Check if already a member
     const existingMember = await TeamMember.findOne({ where: { teamId, userId } });

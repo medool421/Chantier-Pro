@@ -17,6 +17,9 @@ const reportRoutes = require('./routes/report.routes');
 const fileRoutes = require('./routes/file.routes');
 const teamRoutes = require('./routes/team.routes');
 const testRoutes = require('./routes/test.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const invitationRoutes = require('./routes/invitation.routes');
+
 
 // Middlewares
 const errorMiddleware = require('./middlewares/error.middleware');
@@ -45,6 +48,9 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/invitations', invitationRoutes);
+
 
 /* ======================
    HEALTH CHECK
@@ -74,7 +80,7 @@ if (process.env.NODE_ENV !== 'test') {
       await sequelize.authenticate();
       console.log('✅ Database connected');
 
-      await sequelize.sync();
+      await sequelize.sync({ alter: true });
       console.log('✅ Database synced');
 
       app.listen(PORT, () => {

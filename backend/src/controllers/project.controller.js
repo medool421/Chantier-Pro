@@ -87,7 +87,7 @@ exports.assignManager = catchAsync(async (req, res) => {
 });
 
 exports.getManagers = catchAsync(async (req, res) => {
-  const managers = await projectService.getManagers();
+  const managers = await projectService.getManagers(req.user.companyId);
 
   res.status(200).json({
     success: true,

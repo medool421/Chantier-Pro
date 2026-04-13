@@ -1,0 +1,42 @@
+Structure du dossier
+Le num‚ro de s‚rie du volume est F258-4CF2
+C:.
+|   structur.txt
+|   
++---api
+|       auth.service.js
+|       axios.js
+|       files.service.js
+|       invitations.service.js
+|       manager.service.js
+|       notifications.service.js
+|       projects.service.js
+|       reports.service.js
+|       tasks.service.js
+|       
++---assets
+|       ChantierPro.png
+|       
++---components
+|       NotificationBell.jsx
+|       
++---hooks
+|       useFiles.js
+|       useManager.js
+|       useNotifications.js
+|       useProjects.js
+|       useReports.js
+|       useTasks.js
+|       
++---store
+|       auth.store.js
+|       
++---theme
+|       colors.js
+|       
+\---utils
+        constants.js
+        queryClient.js
+        queryKeys.js
+        registerPushToken.js
+        

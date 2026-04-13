@@ -5,10 +5,18 @@ import { QUERY_KEYS } from '../utils/queryKeys';
 
 // ─── Queries ───────────────────────────────────────────────────────────────
 
+// BOSS: all projects
 export const useProjects = () =>
   useQuery({
     queryKey: QUERY_KEYS.projects.all,
     queryFn: projectsService.getAll,
+  });
+
+// MANAGER: only projects assigned to this manager
+export const useManagerProjects = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.manager.myProjects,
+    queryFn: projectsService.getMyProjects,
   });
 
 export const useProject = (id) =>
@@ -56,6 +64,7 @@ export const useUpdateProjectStatus = (id) =>
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.detail(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.manager.myProjects });
     },
   });
 

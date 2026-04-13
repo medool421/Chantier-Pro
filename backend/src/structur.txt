@@ -1,0 +1,89 @@
+Structure du dossier
+Le num‚ro de s‚rie du volume est F258-4CF2
+C:.
+|   server.js
+|   structur.txt
+|   
++---config
+|       database.js
+|       multer.js
+|       
++---controllers
+|       auth.controller.js
+|       file.controller.js
+|       invitation.controller.js
+|       notification.controller.js
+|       project.controller.js
+|       report.controller.js
+|       task.controller.js
+|       team.controller.js
+|       
++---docs
+|       swagger.js
+|       swagger.json
+|       
++---middlewares
+|       auth.middleware.js
+|       error.middleware.js
+|       role.middleware.js
+|       validation.middleware.js
+|       
++---models
+|       Company.js
+|       File.js
+|       index.js
+|       Invitation.js
+|       Notification.js
+|       Project.js
+|       Report.js
+|       Task.js
+|       Team.js
+|       TeamMember.js
+|       User.js
+|       
++---routes
+|       auth.routes.js
+|       file.routes.js
+|       index.js
+|       invitation.routes.js
+|       notification.routes.js
+|       project.routes.js
+|       report.routes.js
+|       task.routes.js
+|       team.routes.js
+|       test.routes.js
+|       
++---services
+|       auth.service.js
+|       email.service.js
+|       file.service.js
+|       invitation.service.js
+|       notification.service.js
+|       project.service.js
+|       report.service.js
+|       task.service.js
+|       team.service.js
+|       
++---tests
+|   |   setup.js
+|   |   
+|   +---integration
+|   |       auth.test.js
+|   |       
+|   \---unit
++---uploads
+|   +---files
+|   \---reports
++---utils
+|       AppError.js
+|       catchAsync.js
+|       jwt.js
+|       
+\---validators
+        auth.validator.js
+        file.validator.js
+        project.validator.js
+        report.validator.js
+        task.validator.js
+        team.validator.js
+        

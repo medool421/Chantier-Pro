@@ -1,24 +1,31 @@
 import api from './axios';
 
 export const tasksService = {
+  // GET /api/projects/:projectId/tasks
   getByProject: (projectId) =>
-    api.get(`tasks/projects/${projectId}/tasks`).then((r) => r.data.data),
+    api.get(`/projects/${projectId}/tasks`).then((r) => r.data.data),
 
+  // GET /api/tasks/:id
   getById: (id) =>
-    api.get(`tasks/tasks/${id}`).then((r) => r.data.data),
+    api.get(`/tasks/${id}`).then((r) => r.data.data),
 
+  // GET /api/tasks/my
   getMyTasks: () =>
-    api.get('/tasks/tasks/my').then((r) => r.data.data || []),
+    api.get('/tasks/my').then((r) => r.data.data || []),
 
+  // POST /api/projects/:projectId/tasks
   create: (projectId, data) =>
-    api.post(`tasks/projects/${projectId}/tasks`, data).then((r) => r.data),
+    api.post(`/projects/${projectId}/tasks`, data).then((r) => r.data.data),
 
+  // PUT /api/tasks/:id
   update: (id, data) =>
-    api.put(`tasks/tasks/${id}`, data).then((r) => r.data),
+    api.put(`/tasks/${id}`, data).then((r) => r.data.data),
 
+  // PATCH /api/tasks/:id/status
   updateStatus: (id, status) =>
-    api.patch(`tasks/tasks/${id}/status`, { status }).then((r) => r.data),
+    api.patch(`/tasks/${id}/status`, { status }).then((r) => r.data.data),
 
+  // DELETE /api/tasks/:id
   delete: (id) =>
     api.delete(`/tasks/${id}`).then((r) => r.data),
 };

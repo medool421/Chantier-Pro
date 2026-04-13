@@ -7,6 +7,9 @@ const TeamMember = require('./TeamMember');
 const Task = require('./Task');
 const File = require('./File');
 const Report = require('./Report');
+const Company = require('./Company');
+const Invitation = require('./Invitation');
+const Notification = require('./Notification');
 
 /* ======================
    RELATIONSHIPS
@@ -57,6 +60,22 @@ Report.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
 User.hasMany(Report, { as: 'reports', foreignKey: 'userId' });  
 Report.belongsTo(User, { as: 'user', foreignKey: 'userId' });  
 
+// Company ↔ User
+Company.hasMany(User, { foreignKey: 'companyId' });
+User.belongsTo(Company, { foreignKey: 'companyId' });
+
+// Company ↔ Invitation
+Company.hasMany(Invitation, { foreignKey: 'companyId' });
+Invitation.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
+
+// User ↔ Invitation
+User.hasMany(Invitation, { foreignKey: 'invitedBy' });
+Invitation.belongsTo(User, { foreignKey: 'invitedBy', as: 'inviter' });
+
+// Company ↔ Project
+Company.hasMany(Project, { foreignKey: 'companyId' });
+Project.belongsTo(Company, { foreignKey: 'companyId' });
+
 module.exports = {
   sequelize,
   User,
@@ -66,4 +85,7 @@ module.exports = {
   Task,
   File,
   Report,
+  Company,
+  Invitation,
+  Notification,
 };

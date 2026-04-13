@@ -12,6 +12,11 @@ const Project = sequelize.define('Project', {
     type: DataTypes.ENUM('PLANNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED'),
     defaultValue: 'PLANNED',
   },
+  
+  companyId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
 
   progressPercentage: {
     type: DataTypes.DECIMAL(5, 2),

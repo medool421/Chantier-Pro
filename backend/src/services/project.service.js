@@ -6,10 +6,11 @@ const AppError = require('../utils/AppError');
 
 const { Op } = require('sequelize');
 
-async function createProject(data, bossId) {
+async function createProject(data, bossId, companyId) {
   return Project.create({
     ...data,
     bossId,
+    companyId,
   });
 }
 
@@ -120,11 +121,12 @@ async function assignManager(projectId, managerId, bossId) {
   return project;
 }
 
-async function getManagers() {
+async function getManagers(companyId) { 
   return User.findAll({
     where: {
       role: 'MANAGER',
       isActive: true,
+      companyId,
     },
     attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
   });

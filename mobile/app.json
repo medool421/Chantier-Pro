@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "scheme": "chantierpro",
     "orientation": "portrait",
-    "icon": "./src/assets/ChantierPro.png", 
+    "icon": "./src/assets/ChantierPro.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./src/assets/ChantierPro.png",
@@ -22,7 +22,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/ChantierPro.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.medool.chantierpro"
     },
     "plugins": [
       "expo-router",
