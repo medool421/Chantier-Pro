@@ -1,11 +1,3 @@
-/**
- * Centralized query keys for React Query cache management.
- * Using factory pattern so keys are consistent across hooks.
- *
- * Usage:
- *   queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.all })
- *   queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.detail(id) })
- */
 export const QUERY_KEYS = {
   auth: {
     me: ['auth', 'me'],
@@ -21,6 +13,7 @@ export const QUERY_KEYS = {
   tasks: {
     byProject: (projectId) => ['tasks', 'project', projectId],
     detail: (id) => ['tasks', id],
+    mine: ['tasks', 'mine'], // Worker: tasks assigned to current user
   },
 
   manager: {
@@ -33,5 +26,13 @@ export const QUERY_KEYS = {
 
   reports: {
     byProject: (projectId) => ['reports', 'project', projectId],
+  },
+
+  notifications: {
+    mine: ['notifications', 'mine'],
+  },
+
+  invitations: {
+    all: ['invitations'],
   },
 };
