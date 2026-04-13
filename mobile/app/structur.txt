@@ -1,0 +1,79 @@
+Structure du dossier
+Le num‚ro de s‚rie du volume est F258-4CF2
+C:.
+|   index.jsx
+|   notifications.jsx
+|   structur.txt
+|   _layout.jsx
+|   
++---(auth)
+|       invite-register.jsx
+|       login.jsx
+|       onboarding.jsx
+|       register-boss.jsx
+|       register.jsx
+|       _layout.jsx
+|       
++---(boss)
+|   |   _layout.jsx
+|   |   
+|   +---(tabs)
+|   |       index.jsx
+|   |       invitations.jsx
+|   |       profile.jsx
+|   |       _layout.jsx
+|   |       
+|   +---projects
+|   |   |   assign-manager.jsx
+|   |   |   create.jsx
+|   |   |   [id].jsx
+|   |   |   
+|   |   \---[id]
+|   |           files.jsx
+|   |           tasks.jsx
+|   |           team.jsx
+|   |           
+|   \---reports
+|           [projectId].jsx
+|           
++---(manager)
+|   |   _layout.jsx
+|   |   
+|   +---(tabs)
+|   |       index.jsx
+|   |       profile.jsx
+|   |       _layout.jsx
+|   |       
+|   \---projects
+|       |   [id].jsx
+|       |   
+|       \---[id]
+|           +---files
+|           |       files.jsx
+|           |       
+|           +---reports
+|           |       create.jsx
+|           |       index.jsx
+|           |       
+|           +---tasks
+|           |       create.jsx
+|           |       index.jsx
+|           |       [id].jsx
+|           |       
+|           \---team
+|                   team.jsx
+|                   
++---(worker)
+|   |   _layout.jsx
+|   |   
+|   +---(tabs)
+|   |       index.jsx
+|   |       profile.jsx
+|   |       _layout.jsx
+|   |       
+|   \---tasks
+|           [id].jsx
+|           
+\---invite
+        [token].jsx
+        
