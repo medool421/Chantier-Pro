@@ -5,9 +5,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../src/store/auth.store';
-import { colors } from '../../src/theme/colors';
-import { useProjects } from '../../src/hooks/useProjects';
+import { useAuthStore } from '../../../src/store/auth.store';
+import { colors } from '../../../src/theme/colors';
+import { useProjects } from '../../../src/hooks/useProjects';
+import NotificationBell from '../../../src/components/NotificationBell';
 
 export default function BossHome() {
   const router = useRouter();
@@ -45,12 +46,20 @@ export default function BossHome() {
           <Text style={styles.greeting}>Bonjour,</Text>
           <Text style={styles.username}>{user?.firstName || 'Boss'}</Text>
         </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/(boss)/profile')}
+          onPress={() => router.push('/(boss)/invitations')}
         >
-          <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
+          <Ionicons name="mail-outline" size={28} color={colors.textDark} />
         </TouchableOpacity>
+        <NotificationBell />
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => router.push('/(boss)/profile')}
+          >
+            <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
+          </TouchableOpacity>
+     </View>
       </View>
 
       {/* Section header */}
@@ -81,10 +90,11 @@ export default function BossHome() {
           isLoading ? null : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>Aucun chantier en cours.</Text>
+              
             </View>
           )
         }
-      />
+        />
     </View>
   );
 }
@@ -113,7 +123,7 @@ const StatusBadge = ({ status }) => {
     </View>
   );
 };
-
+ 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.backgroundLight, paddingHorizontal: 20, paddingTop: 60 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },

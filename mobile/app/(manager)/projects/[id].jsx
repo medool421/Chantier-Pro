@@ -133,6 +133,20 @@ export default function ManagerProjectDetails() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push(`/(manager)/projects/${id}/reports`)}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="document-text-outline" size={24} color="#EF6C00" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionCardTitle}>Rapports</Text>
+              <Text style={styles.actionCardSubtitle}>Envoyer un nouveau rapport</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
 

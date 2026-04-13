@@ -17,11 +17,10 @@ export default function ManagerLayout() {
         },
       }}
     >
-      {/* Dashboard */}
       <Stack.Screen
-        name="index"
+        name="(tabs)"
         options={{
-          title: 'Tableau de bord',
+          headerShown: false,
         }}
       />
 
@@ -61,15 +60,6 @@ export default function ManagerLayout() {
         name="projects/[id]/team/team"
         options={{
           title: 'Équipe du Projet',
-        }}
-      />
-
-      {/* Profile */}
-      <Stack.Screen
-        name="profile"
-        options={{
-          title: 'Mon Profil',
-          presentation: 'modal',
         }}
       />
     </Stack>
