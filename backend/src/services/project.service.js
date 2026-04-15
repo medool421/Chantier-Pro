@@ -132,6 +132,18 @@ async function getManagers(companyId) {
   });
 }
 
+async function getWorkers(companyId) {
+  return User.findAll({
+    where: {
+      role: 'WORKER',
+      isActive: true,
+      companyId,
+    },
+    attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+    order: [['firstName', 'ASC']],
+  });
+}
+
 async function calculateProgress(projectId) {
   const totalTasks = await Task.count({ where: { projectId } });
 
@@ -149,7 +161,7 @@ async function calculateProgress(projectId) {
 
 
 async function getProjectByManager(managerId) {
-  const project = await Project.findAll({
+  const projects = await Project.findAll({
     where: { managerId },
     include: [
       {
@@ -161,7 +173,17 @@ async function getProjectByManager(managerId) {
     order: [['createdAt', 'DESC']],
   });
 
-  return project;
+  const projectsWithProgress = await Promise.all(
+    projects.map(async (project) => {
+      const progress = await calculateProgress(project.id);
+      return {
+        ...project.toJSON(),
+        progressPercentage: progress,
+      };
+    })
+  );
+
+  return projectsWithProgress;
 }
 
 
@@ -175,6 +197,7 @@ module.exports = {
   deleteProject,
   assignManager,
   getManagers,
+  getWorkers,
   calculateProgress,
   getProjectByManager,
 };

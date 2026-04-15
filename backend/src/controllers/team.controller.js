@@ -56,7 +56,8 @@ exports.addMember = catchAsync(async (req, res) => {
     const member = await teamService.addMember(
         req.params.id,
         req.body.userId,
-        req.body.roleInTeam
+        req.body.roleInTeam,
+        req.user.companyId
     );
     res.status(201).json({
         success: true,

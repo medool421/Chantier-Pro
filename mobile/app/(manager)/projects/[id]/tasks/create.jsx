@@ -225,6 +225,17 @@ export default function CreateTask() {
                   <Text style={styles.emptyText}>
                     {searchQuery ? 'Aucun résultat trouvé' : 'Aucun ouvrier disponible'}
                   </Text>
+                  {!searchQuery && (
+                    <TouchableOpacity
+                      style={styles.manageTeamButton}
+                      onPress={() => {
+                        setModalVisible(false);
+                        router.push(`/(manager)/projects/${projectId}/team/team`);
+                      }}
+                    >
+                      <Text style={styles.manageTeamButtonText}>Gerer l'equipe</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               }
             />
@@ -273,4 +284,12 @@ const styles = StyleSheet.create({
   selectedTextMutedColor: { color: 'rgba(255,255,255,0.7)' },
   emptyContainer: { padding: 40, alignItems: 'center' },
   emptyText: { color: colors.textMuted, fontStyle: 'italic', marginTop: 12, fontSize: 14 },
+  manageTeamButton: {
+    marginTop: 14,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  manageTeamButtonText: { color: '#fff', fontWeight: '700' },
 });

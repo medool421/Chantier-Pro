@@ -5,7 +5,8 @@ const catchAsync = require('../utils/catchAsync');
 exports.createProject = catchAsync(async (req, res) => {
   const project = await projectService.createProject(
     req.body,
-    req.user.id
+    req.user.id,
+    req.user.companyId
   );
 
   res.status(201).json({
@@ -92,6 +93,15 @@ exports.getManagers = catchAsync(async (req, res) => {
   res.status(200).json({
     success: true,
     data: managers,
+  });
+});
+
+exports.getWorkers = catchAsync(async (req, res) => {
+  const workers = await projectService.getWorkers(req.user.companyId);
+
+  res.status(200).json({
+    success: true,
+    data: workers,
   });
 });
 
