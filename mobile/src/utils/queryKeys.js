@@ -7,6 +7,7 @@ export const QUERY_KEYS = {
     all: ['projects'],
     detail: (id) => ['projects', id],
     managers: ['projects', 'managers'],
+    workers: ['projects', 'workers'],
     team: (id) => ['projects', id, 'team'],
   },
 
@@ -14,6 +15,10 @@ export const QUERY_KEYS = {
     byProject: (projectId) => ['tasks', 'project', projectId],
     detail: (id) => ['tasks', id],
     mine: ['tasks', 'mine'], // Worker: tasks assigned to current user
+  },
+
+  taskUpdates: {
+    byTask: (taskId) => ['task-updates', 'task', taskId],
   },
 
   manager: {

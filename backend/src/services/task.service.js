@@ -19,12 +19,20 @@ const taskInclude = [
 async function findTaskInCompany(taskId, companyId) {
   const task = await Task.findByPk(taskId, {
     include: [
-      { model: Project, as: 'project', attributes: ['id', 'name', 'status', 'description', 'companyId'] },
+      { model: Project, as: 'project', attributes: ['id', 'name', 'status', 'description', 'companyId', 'managerId', 'bossId'] },
       { model: User, as: 'assignee', attributes: ['id', 'firstName', 'lastName', 'email'] },
     ],
   });
 
-  if (!task || task.project.companyId !== companyId) {
+  if (!task) {
+    throw new AppError('Task not found', 404);
+  }
+
+  const sameCompany = task.project?.companyId && task.project.companyId === companyId;
+  // Legacy safety: old projects may have null companyId.
+  const legacyProject = !task.project?.companyId;
+
+  if (!sameCompany && !legacyProject) {
     throw new AppError('Task not found', 404);
   }
 
@@ -45,11 +53,17 @@ async function getTaskById(taskId, user) {
 
 // ─── Get all tasks for a project ──────────────────────────────────────────
 async function getProjectTasks(projectId, user) {
-  const project = await Project.findOne({
-    where: { id: projectId, companyId: user.companyId },
-  });
+  const project = await Project.findByPk(projectId);
 
   if (!project) {
+    throw new AppError('Project not found', 404);
+  }
+
+  const sameCompany = project.companyId && project.companyId === user.companyId;
+  const legacyOwnerMatch =
+    !project.companyId && (project.managerId === user.id || project.bossId === user.id);
+
+  if (!sameCompany && !legacyOwnerMatch) {
     throw new AppError('Project not found', 404);
   }
 
@@ -75,12 +89,20 @@ async function getMyTasks(userId) {
 
 // ─── Create a task ────────────────────────────────────────────────────────
 async function createTask(projectId, taskData, user) {
-  // Verify project belongs to user's company
-  const project = await Project.findOne({
-    where: { id: projectId, companyId: user.companyId },
-  });
+  // Verify project access.
+  // Prefer strict company check, but keep backward compatibility for older rows
+  // where project.companyId may still be null.
+  const project = await Project.findByPk(projectId);
 
   if (!project) {
+    throw new AppError('Project not found', 404);
+  }
+
+  const sameCompany = project.companyId && project.companyId === user.companyId;
+  const legacyOwnerMatch =
+    !project.companyId && (project.managerId === user.id || project.bossId === user.id);
+
+  if (!sameCompany && !legacyOwnerMatch) {
     throw new AppError('Project not found', 404);
   }
 

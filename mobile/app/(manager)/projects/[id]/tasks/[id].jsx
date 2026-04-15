@@ -15,12 +15,23 @@ export default function ManagerTaskDetail() {
   const router = useRouter();
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [assigneeModalVisible, setAssigneeModalVisible] = useState(false);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [editForm, setEditForm] = useState({});
 
   // ─── Queries ─────────────────────────────────────────────────────────────
   const { data: task, isLoading } = useTask(id);
   const { data: teamData } = useProjectTeam(task?.projectId);
   const assignees = teamData?.members || [];
+  const filteredAssignees = assignees.filter((m) => {
+    const u = m.user;
+    if (!u) return false;
+    if (!assigneeSearchQuery.trim()) return true;
+    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const q = assigneeSearchQuery.toLowerCase();
+    return fullName.includes(q) || email.includes(q);
+  });
 
   useEffect(() => {
     if (task) setEditForm(task);
@@ -58,6 +69,13 @@ export default function ManagerTaskDetail() {
         onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour la tâche'),
       }
     );
+  };
+
+  const getSelectedAssigneeLabel = () => {
+    if (!editForm.assigneeId) return 'Non assigné';
+    const selected = assignees.find((m) => m.userId === editForm.assigneeId);
+    if (!selected?.user) return 'Non assigné';
+    return `${selected.user.firstName} ${selected.user.lastName}`;
   };
 
   const handleDeleteTask = () => {
@@ -215,23 +233,28 @@ export default function ManagerTaskDetail() {
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Assigné à</Text>
-                {assignees.map((m) => {
-                  const u = m.user;
-                  if (!u) return null;
-                  return (
-                    <TouchableOpacity
-                      key={m.userId}
-                      style={[styles.assigneeOption, editForm.assigneeId === m.userId && styles.assigneeSelected]}
-                      onPress={() => setEditForm({ ...editForm, assigneeId: m.userId })}
-                    >
-                      <View style={styles.avatarSmall}>
-                        <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
-                      </View>
-                      <Text style={styles.assigneeOptionText}>{u.firstName} {u.lastName}</Text>
-                      {editForm.assigneeId === m.userId && <Ionicons name="checkmark" size={18} color={colors.primary} />}
-                    </TouchableOpacity>
-                  );
-                })}
+                <TouchableOpacity
+                  style={styles.selectorCard}
+                  onPress={() => {
+                    setAssigneeModalVisible(true);
+                    setAssigneeSearchQuery('');
+                  }}
+                >
+                  <View style={styles.selectorInfo}>
+                    <View style={styles.avatarSelector}>
+                      {editForm.assigneeId ? (
+                        <Text style={styles.avatarSelectorText}>
+                          {assignees.find((m) => m.userId === editForm.assigneeId)?.user?.firstName?.[0]}
+                          {assignees.find((m) => m.userId === editForm.assigneeId)?.user?.lastName?.[0]}
+                        </Text>
+                      ) : (
+                        <Ionicons name="person-outline" size={20} color={colors.primary} />
+                      )}
+                    </View>
+                    <Text style={styles.selectorText}>{getSelectedAssigneeLabel()}</Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.buttonRow}>
@@ -248,6 +271,100 @@ export default function ManagerTaskDetail() {
                   </Text>
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ASSIGNEE PICKER MODAL - same UX as tasks/create */}
+      <Modal
+        visible={assigneeModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          setAssigneeModalVisible(false);
+          setAssigneeSearchQuery('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>Choisir un ouvrier</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setAssigneeModalVisible(false);
+                  setAssigneeSearchQuery('');
+                }}
+              >
+                <Ionicons name="close" size={24} color={colors.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher..."
+                value={assigneeSearchQuery}
+                onChangeText={setAssigneeSearchQuery}
+              />
+              {assigneeSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setAssigneeSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.workerModalItem, !editForm.assigneeId && styles.workerModalItemSelected]}
+              onPress={() => {
+                setEditForm({ ...editForm, assigneeId: null });
+                setAssigneeModalVisible(false);
+                setAssigneeSearchQuery('');
+              }}
+            >
+              <View style={styles.avatarSmall}>
+                <Ionicons name="person-remove-outline" size={18} color={!editForm.assigneeId ? '#fff' : colors.primary} />
+              </View>
+              <Text style={[styles.workerName, !editForm.assigneeId && styles.selectedTextColor]}>
+                Non assigné
+              </Text>
+              {!editForm.assigneeId && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+            </TouchableOpacity>
+
+            <ScrollView style={{ maxHeight: 320 }}>
+              {filteredAssignees.map((m) => {
+                const u = m.user;
+                if (!u) return null;
+                return (
+                  <TouchableOpacity
+                    key={m.userId}
+                    style={[styles.workerModalItem, editForm.assigneeId === m.userId && styles.workerModalItemSelected]}
+                    onPress={() => {
+                      setEditForm({ ...editForm, assigneeId: m.userId });
+                      setAssigneeModalVisible(false);
+                      setAssigneeSearchQuery('');
+                    }}
+                  >
+                    <View style={styles.avatarSmall}>
+                      <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
+                    </View>
+                    <Text style={[styles.workerName, editForm.assigneeId === m.userId && styles.selectedTextColor]}>
+                      {u.firstName} {u.lastName}
+                    </Text>
+                    {editForm.assigneeId === m.userId && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+                  </TouchableOpacity>
+                );
+              })}
+
+              {filteredAssignees.length === 0 && (
+                <View style={styles.emptyAssigneeContainer}>
+                  <Ionicons name="people-outline" size={36} color={colors.textMuted} />
+                  <Text style={styles.emptyAssigneeText}>
+                    {assigneeSearchQuery ? 'Aucun resultat trouve' : 'Aucun ouvrier disponible'}
+                  </Text>
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -299,9 +416,28 @@ const styles = StyleSheet.create({
   prioritySelected: { backgroundColor: colors.primary },
   priorityOptionText: { fontSize: 14, color: colors.textDark, fontWeight: '600' },
   prioritySelectedText: { color: '#fff' },
-  assigneeOption: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: '#F5F5F5', marginBottom: 8 },
-  assigneeSelected: { backgroundColor: colors.primaryLight },
-  assigneeOptionText: { flex: 1, fontSize: 14, color: colors.textDark, fontWeight: '600' },
+  selectorCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 12, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E0E0E0' },
+  selectorInfo: { flexDirection: 'row', alignItems: 'center' },
+  selectorText: { fontSize: 16, color: colors.textDark, marginLeft: 12, fontWeight: '500' },
+  avatarSelector: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  avatarSelectorText: { fontSize: 14, fontWeight: 'bold', color: colors.primary },
+  workerModalItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, marginBottom: 8, backgroundColor: '#F9F9F9' },
+  workerModalItemSelected: { backgroundColor: colors.primary },
+  workerName: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.textDark },
+  selectedTextColor: { color: '#fff' },
+  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 15 },
+  emptyAssigneeContainer: { alignItems: 'center', paddingVertical: 20 },
+  emptyAssigneeText: { color: colors.textMuted, marginTop: 8, fontSize: 13 },
   avatarSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   avatarSmallText: { fontSize: 12, fontWeight: 'bold', color: colors.primary },
   buttonRow: { flexDirection: 'row', gap: 12 },

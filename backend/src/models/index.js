@@ -10,6 +10,7 @@ const Report = require('./Report');
 const Company = require('./Company');
 const Invitation = require('./Invitation');
 const Notification = require('./Notification');
+const TaskUpdate = require('./TaskUpdate');
 
 /* ======================
    RELATIONSHIPS
@@ -60,6 +61,14 @@ Report.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
 User.hasMany(Report, { as: 'reports', foreignKey: 'userId' });  
 Report.belongsTo(User, { as: 'user', foreignKey: 'userId' });  
 
+// Task ↔ TaskUpdate
+Task.hasMany(TaskUpdate, { as: 'updates', foreignKey: 'taskId' });
+TaskUpdate.belongsTo(Task, { as: 'task', foreignKey: 'taskId' });
+
+// User ↔ TaskUpdate
+User.hasMany(TaskUpdate, { as: 'taskUpdates', foreignKey: 'userId' });
+TaskUpdate.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+
 // Company ↔ User
 Company.hasMany(User, { foreignKey: 'companyId' });
 User.belongsTo(Company, { foreignKey: 'companyId' });
@@ -88,4 +97,5 @@ module.exports = {
   Company,
   Invitation,
   Notification,
+  TaskUpdate,
 };

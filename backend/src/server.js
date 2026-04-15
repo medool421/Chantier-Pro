@@ -19,6 +19,7 @@ const teamRoutes = require('./routes/team.routes');
 const testRoutes = require('./routes/test.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const invitationRoutes = require('./routes/invitation.routes');
+const taskUpdateRoutes = require('./routes/taskUpdate.routes');
 
 
 // Middlewares
@@ -43,13 +44,14 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 ====================== */
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
-app.use('/api/tasks', taskRoutes);
+app.use('/api', taskRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/invitations', invitationRoutes);
+app.use('/api', taskUpdateRoutes);
 
 
 /* ======================
