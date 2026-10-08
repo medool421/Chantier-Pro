@@ -16,23 +16,26 @@ const taskInclude = [
 ];
 
 // ─── Helper: fetch task and verify it belongs to user's company ───────────
-async function findTaskInCompany(taskId, companyId) {
+async function findTaskInCompany(taskId, user) {
+    console.log('findTaskInCompany called with:', { taskId, userId: user.id, userCompanyId: user.companyId });
   const task = await Task.findByPk(taskId, {
     include: [
       { model: Project, as: 'project', attributes: ['id', 'name', 'status', 'description', 'companyId', 'managerId', 'bossId'] },
       { model: User, as: 'assignee', attributes: ['id', 'firstName', 'lastName', 'email'] },
     ],
   });
+  console.log('task found:', task?.id, 'project companyId:', task?.project?.companyId);
 
-  if (!task) {
+  if (!task || !task.project) {
     throw new AppError('Task not found', 404);
   }
 
-  const sameCompany = task.project?.companyId && task.project.companyId === companyId;
-  // Legacy safety: old projects may have null companyId.
-  const legacyProject = !task.project?.companyId;
+  const sameCompany = task.project.companyId && task.project.companyId === user.companyId;
+  const legacyOwnerMatch =
+    !task.project.companyId &&
+    (task.project.managerId === user.id || task.project.bossId === user.id);
 
-  if (!sameCompany && !legacyProject) {
+  if (!sameCompany && !legacyOwnerMatch) {
     throw new AppError('Task not found', 404);
   }
 
@@ -41,7 +44,7 @@ async function findTaskInCompany(taskId, companyId) {
 
 // ─── Get task by ID ────────────────────────────────────────────────────────
 async function getTaskById(taskId, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
 
   // WORKER can only view their own tasks
   if (user.role === 'WORKER' && task.assignedTo !== user.id) {
@@ -128,7 +131,7 @@ async function createTask(projectId, taskData, user) {
 
 // ─── Update a task ────────────────────────────────────────────────────────
 async function updateTask(taskId, updates, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
 
   // Verify new assignee belongs to the same company
   if ('assigneeId' in updates) {
@@ -164,7 +167,7 @@ async function updateTask(taskId, updates, user) {
 
 // ─── Update task status ───────────────────────────────────────────────────
 async function updateTaskStatus(taskId, status, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
 
   if (user.role === 'WORKER' && task.assignedTo !== user.id) {
     throw new AppError('You can only update your own tasks', 403);
@@ -177,7 +180,7 @@ async function updateTaskStatus(taskId, status, user) {
 
 // ─── Delete a task ────────────────────────────────────────────────────────
 async function deleteTask(taskId, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
   await task.destroy();
   return true;
 }

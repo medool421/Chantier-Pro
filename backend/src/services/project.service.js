@@ -76,10 +76,25 @@ async function updateProject(id, data, userId) {
 }
 
 async function updateStatus(id, status, userId) {
-  const project = await getProjectById(id, userId);
+  const project = await Project.findOne({
+    where: {
+      id,
+      [Op.or]: [
+        { bossId: userId },
+        { managerId: userId }
+      ]
+    }
+  });
+
+  if (!project) {
+    throw new AppError('Project not found or access denied', 404);
+  }
+
   project.status = status;
   await project.save();
-  return project;
+
+  // return the full enriched object via getProjectById
+  return getProjectById(id, userId);
 }
 
 async function deleteProject(id, bossId) {

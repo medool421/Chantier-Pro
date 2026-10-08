@@ -12,6 +12,7 @@ import { useProjectTeam } from '../../../../../src/hooks/useProjects';
 
 export default function ManagerTaskDetail() {
   const { id } = useLocalSearchParams();
+  const taskId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -20,7 +21,7 @@ export default function ManagerTaskDetail() {
   const [editForm, setEditForm] = useState({});
 
   // ─── Queries ─────────────────────────────────────────────────────────────
-  const { data: task, isLoading } = useTask(id);
+  const { data: task, isLoading } = useTask(taskId);
   const { data: teamData } = useProjectTeam(task?.projectId);
   const assignees = teamData?.members || [];
   const filteredAssignees = assignees.filter((m) => {
@@ -38,8 +39,8 @@ export default function ManagerTaskDetail() {
   }, [task?.id]);
 
   // ─── Mutations ────────────────────────────────────────────────────────────
-  const updateStatusMutation = useUpdateTaskStatus(id, task?.projectId);
-  const updateTaskMutation = useUpdateTask(id, task?.projectId);
+  const updateStatusMutation = useUpdateTaskStatus(taskId, task?.projectId);
+  const updateTaskMutation = useUpdateTask(taskId, task?.projectId);
   const deleteTaskMutation = useDeleteTask(task?.projectId);
 
   const handleUpdateStatus = (newStatus) => {
@@ -88,7 +89,7 @@ export default function ManagerTaskDetail() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: () => {
-            deleteTaskMutation.mutate(id, {
+            deleteTaskMutation.mutate(taskId, {
               onSuccess: () => {
                 Alert.alert('Succès', 'Tâche supprimée');
                 router.back();
