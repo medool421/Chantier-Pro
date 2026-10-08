@@ -40,7 +40,7 @@ async function getAllProjects(userId, filters = {}) {
   });
 }
 
-async function getProjectById(id, userId) {
+async function findAuthorizedProject(id, userId) {
   const project = await Project.findOne({
     where: {
       id,
@@ -59,6 +59,12 @@ async function getProjectById(id, userId) {
     throw new AppError('Project not found or access denied', 404);
   }
 
+  return project;
+}
+
+async function getProjectById(id, userId) {
+  const project = await findAuthorizedProject(id, userId);
+
   // ADD THIS
   const progress = await calculateProgress(project.id);
 
@@ -70,9 +76,9 @@ async function getProjectById(id, userId) {
 
 
 async function updateProject(id, data, userId) {
-  const project = await getProjectById(id, userId);
+  const project = await findAuthorizedProject(id, userId);
   await project.update(data);
-  return project;
+  return getProjectById(id, userId);
 }
 
 async function updateStatus(id, status, userId) {
