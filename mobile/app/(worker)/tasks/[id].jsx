@@ -19,6 +19,13 @@ import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../
 import { useTask, useUpdateTaskStatus } from '../../../src/hooks/useTasks';
 import { useCreateTaskUpdate, useTaskUpdates } from '../../../src/hooks/useTaskUpdates';
 
+const getImageMimeType = (uri) => {
+  const extension = uri.split('.').pop()?.toLowerCase();
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+  return 'image/jpeg';
+};
+
 export default function WorkerTaskDetail() {
   const { id } = useLocalSearchParams();
   const taskId = Array.isArray(id) ? id[0] : id;
@@ -116,19 +123,25 @@ export default function WorkerTaskDetail() {
     setUpdateType(null);
   };
 
-  const submitTaskUpdate = () => {
+  const submitTaskUpdate = async () => {
     if (!updateType || !selectedImageUri) {
       Alert.alert('Photo requise', 'Ajoutez une photo avant de continuer.');
       return;
     }
 
+    const fileName = selectedImageUri.split('/').pop() || `task-update-${Date.now()}.jpg`;
+    const formData = new FormData();
+    formData.append('type', updateType);
+    formData.append('message', message?.trim() || '');
+    formData.append('taskId', taskId);
+    formData.append('image', {
+      uri: selectedImageUri,
+      name: fileName,
+      type: getImageMimeType(fileName),
+    });
+
     createTaskUpdateMutation.mutate(
-      {
-        taskId,
-        type: updateType,
-        message: message?.trim() || null,
-        imageUrl: selectedImageUri, // local URI for now
-      },
+      { taskId, formData },
       {
         onSuccess: () => {
           Alert.alert('Succès', 'Mise à jour envoyée.');
