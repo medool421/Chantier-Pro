@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./docs/swagger');
 
@@ -33,10 +32,6 @@ const app = express();
    app.use(express.json());
    app.use(cors());
 
-/* ======================
-   STATIC FILES (UPLOADS)
-====================== */
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 /* ======================
@@ -45,7 +40,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api', taskRoutes);
-app.use('/api/reports', reportRoutes);
+app.use('/api', reportRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/test', testRoutes);
@@ -82,8 +77,7 @@ if (process.env.NODE_ENV !== 'test') {
       await sequelize.authenticate();
       console.log('✅ Database connected');
 
-      await sequelize.sync({ alter: true });
-      console.log('✅ Database synced');
+      console.log('Database migrations must be applied explicitly before startup.');
 
       app.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);

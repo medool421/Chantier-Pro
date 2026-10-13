@@ -6,54 +6,76 @@ const auth = require('../middlewares/auth.middleware');
 const role = require('../middlewares/role.middleware');
 const validate = require('../middlewares/validation.middleware');
 const upload = require('../config/multer');
+const AppError = require('../utils/AppError');
+const { removeStoredFile } = require('../utils/fileStorage');
 
 const { uploadFileSchema } = require('../validators/file.validator');
+
+async function cleanupUploadedFile(req) {
+  if (!req.file?.path) return;
+
+  try {
+    await removeStoredFile(req.file.path);
+  } catch (cleanupError) {
+    console.error('Unable to clean up rejected upload:', cleanupError);
+  }
+}
 
 /**
  * @swagger
  * tags:
  *   name: Files
- *   description: File upload and management
+ *   description: Project file upload and retrieval
  */
+
+const parseUpload = (req, res, next) => {
+  upload.single('file')(req, res, (error) => {
+    if (!error) return next();
+
+    cleanupUploadedFile(req).finally(() => {
+      const isClientUploadError = [
+        'LIMIT_FILE_SIZE',
+        'LIMIT_FILE_COUNT',
+        'LIMIT_UNEXPECTED_FILE',
+      ].includes(error.code) || error.message === 'Only image and PDF files are supported';
+
+      if (!isClientUploadError) return next(error);
+
+      const message = error.code === 'LIMIT_FILE_SIZE'
+        ? 'File is too large (maximum 10 MB)'
+        : error.message || 'Invalid file upload';
+
+      return next(new AppError(message, 400));
+    });
+  });
+};
+
+const validateUpload = (req, res, next) => {
+  validate(uploadFileSchema)(req, res, (error) => {
+    if (!error) return next();
+
+    cleanupUploadedFile(req).finally(() => next(error));
+  });
+};
 
 router.use(auth);
 
+// Workers retain the existing upload capability. Project listing and
+// retrieval are intentionally limited to Bosses and assigned Managers.
 /**
  * @swagger
  * /api/files:
  *   post:
- *     summary: Upload a file
+ *     summary: Upload a project file
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - file
- *               - projectId
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *               projectId:
- *                 type: integer
- *     responses:
- *       201:
- *         description: File uploaded
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/FileResponse'
  */
 router.post(
   '/',
   role('WORKER', 'MANAGER'),
-  upload.single('file'),
-  validate(uploadFileSchema),
+  parseUpload,
+  validateUpload,
   fileController.uploadFile
 );
 
@@ -61,23 +83,10 @@ router.post(
  * @swagger
  * /api/files/projects/{projectId}:
  *   get:
- *     summary: Get files for a project
+ *     summary: List files for an authorized project
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: projectId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Project files
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/FileListResponse'
  */
 router.get(
   '/projects/:projectId',
@@ -87,22 +96,34 @@ router.get(
 
 /**
  * @swagger
- * /api/files/{id}:
- *   delete:
- *     summary: Delete a file
+ * /api/files/{id}/download:
+ *   get:
+ *     summary: Download an authorized project file
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       204:
- *         description: File deleted
  */
+router.get(
+  '/:id/download',
+  role('BOSS', 'MANAGER'),
+  fileController.downloadFile
+);
+
+/**
+ * @swagger
+ * /api/files/{id}:
+ *   get:
+ *     summary: Retrieve authorized file metadata
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/:id',
+  role('BOSS', 'MANAGER'),
+  fileController.getFile
+);
+
 router.delete(
   '/:id',
   role('MANAGER'),

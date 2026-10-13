@@ -10,9 +10,26 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
-    "migrate": "node src/database/migrate.js",
+    "migrate": "node src/database/migrate.js up",
+    "migrate:status": "node src/database/migrate.js status",
+    "migrate:down": "node src/database/migrate.js down",
+    "migrate:test": "cross-env NODE_ENV=test node src/database/migration-test.js",
     "seed": "node seeders/runSeed",
     "docs": "node src/docs/generate.js"
+  },
+  "jest": {
+    "testEnvironment": "./src/tests/jestEnvironment.js",
+    "rootDir": ".",
+    "testMatch": [
+      "<rootDir>/src/tests/**/*.test.js"
+    ],
+    "setupTestFrameworkScriptFile": "<rootDir>/src/tests/setup.js",
+    "transform": {},
+    "moduleNameMapper": {
+      "^expo-server-sdk$": "<rootDir>/src/tests/mocks/expo-server-sdk.js"
+    },
+    "clearMocks": true,
+    "forceExit": true
   },
   "keywords": [
     "construction",

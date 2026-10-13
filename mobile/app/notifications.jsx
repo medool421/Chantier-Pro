@@ -1,22 +1,28 @@
 import React from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator,
+  RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../src/theme/colors';
 import { useMyNotifications, useMarkAsRead, useMarkAllAsRead } from '../src/hooks/useNotifications';
+import { useAuthStore } from '../src/store/auth.store';
+import { tasksService } from '../src/api/tasks.service';
+import { projectsService } from '../src/api/projects.service';
 
 const NOTIFICATION_ICONS = {
   TASK_ASSIGNED:          { name: 'clipboard-outline',   color: '#1976D2' },
   TASK_STATUS_CHANGED:    { name: 'refresh-outline',      color: '#388E3C' },
   PROJECT_STATUS_CHANGED: { name: 'construct-outline',    color: '#F57C00' },
   MANAGER_ASSIGNED:       { name: 'person-add-outline',   color: '#7B1FA2' },
+  INVITATION_ACCEPTED:    { name: 'person-add-outline',   color: '#2E7D32' },
 };
 
 const timeAgo = (dateStr) => {
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  const date = new Date(dateStr);
+  if (!dateStr || Number.isNaN(date.getTime())) return 'Date inconnue';
+  const diff = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
   if (diff < 60)    return 'À l\'instant';
   if (diff < 3600)  return `${Math.floor(diff / 60)}min`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
@@ -25,23 +31,62 @@ const timeAgo = (dateStr) => {
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { data, isLoading, isRefetching, refetch } = useMyNotifications();
+  const role = useAuthStore((state) => state.user?.role);
+  const { data, isLoading, isError, isRefetching, refetch } = useMyNotifications();
   const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;
+  const [openingId, setOpeningId] = React.useState(null);
 
   const markAsReadMutation = useMarkAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
 
-  const handlePress = (item) => {
+  const handlePress = async (item) => {
     // Mark as read
     if (!item.isRead) {
       markAsReadMutation.mutate(item.id);
     }
-    // Navigate to relevant screen
-    if (item.data?.taskId) {
-      router.push(`/tasks/${item.data.taskId}`);
-    } else if (item.data?.projectId) {
-      router.push(`/projects/${item.data.projectId}`);
+
+    const taskId = item.data?.taskId;
+    const projectId = item.data?.projectId;
+    if (!taskId && !projectId) {
+      Alert.alert('Notification indisponible', 'Cette notification ne contient aucune cible accessible.');
+      return;
+    }
+
+    setOpeningId(item.id);
+    try {
+      if (taskId) {
+        const task = await tasksService.getById(taskId);
+        const resolvedProjectId = task?.projectId || projectId;
+
+        if (role === 'WORKER') {
+          router.push(`/(worker)/tasks/${taskId}`);
+        } else if (role === 'MANAGER' && resolvedProjectId) {
+          router.push({
+            pathname: `/(manager)/projects/${resolvedProjectId}/tasks/${taskId}`,
+            params: { projectId: resolvedProjectId },
+          });
+        } else if (role === 'BOSS' && resolvedProjectId) {
+          router.push(`/(boss)/projects/${resolvedProjectId}`);
+        } else {
+          throw new Error('No role-appropriate task destination');
+        }
+      } else if (role === 'MANAGER') {
+        await projectsService.getById(projectId);
+        router.push(`/(manager)/projects/${projectId}`);
+      } else if (role === 'BOSS') {
+        await projectsService.getById(projectId);
+        router.push(`/(boss)/projects/${projectId}`);
+      } else {
+        throw new Error('No role-appropriate project destination');
+      }
+    } catch (error) {
+      Alert.alert(
+        'Cible indisponible',
+        'Cette tâche ou ce projet a été supprimé, ou vous n’avez plus accès.'
+      );
+    } finally {
+      setOpeningId(null);
     }
   };
 
@@ -52,6 +97,7 @@ export default function NotificationsScreen() {
       <TouchableOpacity
         style={[styles.item, !item.isRead && styles.itemUnread]}
         onPress={() => handlePress(item)}
+        disabled={openingId === item.id}
         activeOpacity={0.7}
       >
         <View style={[styles.iconContainer, { backgroundColor: icon.color + '20' }]}>
@@ -66,7 +112,11 @@ export default function NotificationsScreen() {
           <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
         </View>
 
-        {!item.isRead && <View style={styles.unreadDot} />}
+        {openingId === item.id ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : !item.isRead ? (
+          <View style={styles.unreadDot} />
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -75,6 +125,19 @@ export default function NotificationsScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.center}>
+        <Ionicons name="cloud-offline-outline" size={56} color={colors.textMuted} />
+        <Text style={styles.errorTitle}>Notifications indisponibles</Text>
+        <Text style={styles.errorText}>Vérifiez votre connexion et réessayez.</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryText}>Réessayer</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -120,7 +183,11 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   container:     { flex: 1, backgroundColor: colors.backgroundLight },
-  center:        { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center:        { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  errorTitle:    { fontSize: 18, fontWeight: '700', color: colors.textDark, marginTop: 14 },
+  errorText:     { fontSize: 14, color: colors.textMuted, marginTop: 8, textAlign: 'center' },
+  retryButton:   { marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 8 },
+  retryText:     { color: '#fff', fontSize: 14, fontWeight: '600' },
   markAllButton: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   markAllText:   { fontSize: 14, color: colors.primary, fontWeight: '600' },
   list:          { paddingBottom: 24 },

@@ -25,7 +25,8 @@ const Notification = sequelize.define('Notification', {
       'TASK_ASSIGNED',
       'TASK_STATUS_CHANGED',
       'PROJECT_STATUS_CHANGED',
-      'MANAGER_ASSIGNED'
+      'MANAGER_ASSIGNED',
+      'INVITATION_ACCEPTED'
     ),
     allowNull: false,
   },

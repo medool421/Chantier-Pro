@@ -1,5 +1,9 @@
 const { Task, User, Project } = require('../models');
 const AppError = require('../utils/AppError');
+const {
+  assertAuthorizedProject,
+  findAuthorizedProject,
+} = require('../utils/projectAccess');
 
 // ─── Shared include for task responses ────────────────────────────────────
 const taskInclude = [
@@ -17,26 +21,23 @@ const taskInclude = [
 
 // ─── Helper: fetch task and verify it belongs to user's company ───────────
 async function findTaskInCompany(taskId, user) {
-    console.log('findTaskInCompany called with:', { taskId, userId: user.id, userCompanyId: user.companyId });
   const task = await Task.findByPk(taskId, {
     include: [
       { model: Project, as: 'project', attributes: ['id', 'name', 'status', 'description', 'companyId', 'managerId', 'bossId'] },
       { model: User, as: 'assignee', attributes: ['id', 'firstName', 'lastName', 'email'] },
     ],
   });
-  console.log('task found:', task?.id, 'project companyId:', task?.project?.companyId);
 
   if (!task || !task.project) {
     throw new AppError('Task not found', 404);
   }
 
-  const sameCompany = task.project.companyId && task.project.companyId === user.companyId;
-  const legacyOwnerMatch =
-    !task.project.companyId &&
-    (task.project.managerId === user.id || task.project.bossId === user.id);
-
-  if (!sameCompany && !legacyOwnerMatch) {
-    throw new AppError('Task not found', 404);
+  if (user.role === 'WORKER') {
+    if (!task.project.companyId || task.project.companyId !== user.companyId) {
+      throw new AppError('Task not found', 404);
+    }
+  } else {
+    assertAuthorizedProject(task.project, user);
   }
 
   return task;
@@ -56,19 +57,7 @@ async function getTaskById(taskId, user) {
 
 // ─── Get all tasks for a project ──────────────────────────────────────────
 async function getProjectTasks(projectId, user) {
-  const project = await Project.findByPk(projectId);
-
-  if (!project) {
-    throw new AppError('Project not found', 404);
-  }
-
-  const sameCompany = project.companyId && project.companyId === user.companyId;
-  const legacyOwnerMatch =
-    !project.companyId && (project.managerId === user.id || project.bossId === user.id);
-
-  if (!sameCompany && !legacyOwnerMatch) {
-    throw new AppError('Project not found', 404);
-  }
+  await findAuthorizedProject(projectId, user);
 
   return Task.findAll({
     where: { projectId },
@@ -78,10 +67,17 @@ async function getProjectTasks(projectId, user) {
 }
 
 // ─── Get tasks assigned to current user ───────────────────────────────────
-async function getMyTasks(userId) {
+async function getMyTasks(user) {
   return Task.findAll({
-    where: { assignedTo: userId },
-    include: taskInclude,
+    where: { assignedTo: user.id },
+    include: [
+      taskInclude[0],
+      {
+        ...taskInclude[1],
+        where: { companyId: user.companyId },
+        required: true,
+      },
+    ],
     order: [
       ['dueDate', 'ASC'],
       ['priority', 'DESC'],
@@ -92,36 +88,24 @@ async function getMyTasks(userId) {
 
 // ─── Create a task ────────────────────────────────────────────────────────
 async function createTask(projectId, taskData, user) {
-  // Verify project access.
-  // Prefer strict company check, but keep backward compatibility for older rows
-  // where project.companyId may still be null.
-  const project = await Project.findByPk(projectId);
+  const project = await findAuthorizedProject(projectId, user);
 
-  if (!project) {
-    throw new AppError('Project not found', 404);
-  }
-
-  const sameCompany = project.companyId && project.companyId === user.companyId;
-  const legacyOwnerMatch =
-    !project.companyId && (project.managerId === user.id || project.bossId === user.id);
-
-  if (!sameCompany && !legacyOwnerMatch) {
-    throw new AppError('Project not found', 404);
-  }
-
-  // Verify assignee belongs to the same company
+  // Verify assignee belongs to the same company and is active.
   if (taskData.assignedTo) {
     const assignee = await User.findOne({
-      where: { id: taskData.assignedTo, companyId: user.companyId },
+      where: {
+        id: taskData.assignedTo,
+        companyId: project.companyId || user.companyId,
+        role: 'WORKER',
+        isActive: true,
+        status: 'ACTIVE',
+      },
     });
 
     if (!assignee) {
       throw new AppError('Assignee not found in your company', 404);
     }
 
-    if (assignee.role !== 'WORKER') {
-      throw new AppError('Tasks can only be assigned to WORKER role', 400);
-    }
   }
 
   const task = await Task.create({ ...taskData, projectId });
@@ -133,21 +117,23 @@ async function createTask(projectId, taskData, user) {
 async function updateTask(taskId, updates, user) {
   const task = await findTaskInCompany(taskId, user);
 
-  // Verify new assignee belongs to the same company
+  // Verify new assignee belongs to the same company and is active.
   if ('assigneeId' in updates) {
     if (updates.assigneeId === null) {
       task.assignedTo = null;
     } else {
       const assignee = await User.findOne({
-        where: { id: updates.assigneeId, companyId: user.companyId },
+        where: {
+          id: updates.assigneeId,
+          companyId: task.project.companyId || user.companyId,
+          role: 'WORKER',
+          isActive: true,
+          status: 'ACTIVE',
+        },
       });
 
       if (!assignee) {
         throw new AppError('Assignee not found in your company', 404);
-      }
-
-      if (assignee.role !== 'WORKER') {
-        throw new AppError('Tasks can only be assigned to WORKER role', 400);
       }
 
       task.assignedTo = updates.assigneeId;

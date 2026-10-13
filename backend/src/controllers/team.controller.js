@@ -2,7 +2,7 @@ const teamService = require('../services/team.service');
 const catchAsync = require('../utils/catchAsync');
 
 exports.createTeam = catchAsync(async (req, res) => {
-    const team = await teamService.createTeam(req.body, req.user.id);
+    const team = await teamService.createTeam(req.body, req.user);
     res.status(201).json({
         success: true,
         data: team
@@ -10,7 +10,7 @@ exports.createTeam = catchAsync(async (req, res) => {
 });
 
 exports.getTeam = catchAsync(async (req, res) => {
-    const team = await teamService.getTeamById(req.params.id);
+    const team = await teamService.getTeamById(req.params.id, req.user);
     res.json({
         success: true,
         data: team
@@ -20,7 +20,7 @@ exports.getTeam = catchAsync(async (req, res) => {
 
 exports.getProjTeam = async (req, res, next) => {
   try {
-    const team = await teamService.getProjectTeam(req.params.id);
+    const team = await teamService.getProjectTeam(req.params.id, req.user);
 
     res.status(200).json({
       success: true,
@@ -32,7 +32,7 @@ exports.getProjTeam = async (req, res, next) => {
 };
 
 exports.getTeams = catchAsync(async (req, res) => {
-    const teams = await teamService.getTeams(req.query);
+    const teams = await teamService.getTeams(req.query, req.user);
     res.json({
         success: true,
         data: teams
@@ -40,7 +40,7 @@ exports.getTeams = catchAsync(async (req, res) => {
 });
 
 exports.updateTeam = catchAsync(async (req, res) => {
-    const team = await teamService.updateTeam(req.params.id, req.body);
+    const team = await teamService.updateTeam(req.params.id, req.body, req.user);
     res.json({
         success: true,
         data: team
@@ -48,7 +48,7 @@ exports.updateTeam = catchAsync(async (req, res) => {
 });
 
 exports.deleteTeam = catchAsync(async (req, res) => {
-    await teamService.deleteTeam(req.params.id);
+    await teamService.deleteTeam(req.params.id, req.user);
     res.status(204).send();
 });
 
@@ -57,7 +57,7 @@ exports.addMember = catchAsync(async (req, res) => {
         req.params.id,
         req.body.userId,
         req.body.roleInTeam,
-        req.user.companyId
+        req.user
     );
     res.status(201).json({
         success: true,
@@ -66,6 +66,6 @@ exports.addMember = catchAsync(async (req, res) => {
 });
 
 exports.removeMember = catchAsync(async (req, res) => {
-    await teamService.removeMember(req.params.id, req.params.userId);
+    await teamService.removeMember(req.params.id, req.params.userId, req.user);
     res.status(204).send();
 });

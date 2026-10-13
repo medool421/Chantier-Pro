@@ -60,6 +60,12 @@ export default function BossLayout() {
           title: 'Rapports du Chantier'
         }}
       />
+      <Stack.Screen
+        name="projects/[id]/files"
+        options={{
+          title: 'Fichiers du Chantier'
+        }}
+      />
     </Stack>
   );
 }

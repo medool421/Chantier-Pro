@@ -180,13 +180,7 @@ function buildInviteEmail({ inviterName, companyName, role, inviteLink, expiresA
 
 // ─── Send invitation email ─────────────────────────────────────────────────
 async function sendInvitationEmail({ to, inviterName, companyName, role, token, expiresAt }) {
-  const { deliveryTo, originalTo, mode } = resolveInvitationRecipient(to);
-  // #region agent log
-  fetch('http://127.0.0.1:7376/ingest/d2026b59-fde2-4b44-b199-784e44ae48ce',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'404a50'},body:JSON.stringify({sessionId:'404a50',hypothesisId:'A',location:'email.service.js:sendInvitationEmail:env',message:'override env snapshot',data:{TEST_EMAIL_OVERRIDE,rawEnv:process.env.TEST_EMAIL_OVERRIDE??null,mode,deliveryTo,originalDomain:typeof originalTo==='string'?originalTo.split('@')[1]:null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-  // #region agent log
-  fetch('http://127.0.0.1:7376/ingest/d2026b59-fde2-4b44-b199-784e44ae48ce',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'404a50'},body:JSON.stringify({sessionId:'404a50',hypothesisId:'D',location:'email.service.js:sendInvitationEmail:resend',message:'resend client state',data:{hasApiKey:Boolean(process.env.RESEND_API_KEY)},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+  const { deliveryTo, mode } = resolveInvitationRecipient(to);
   const inviteLink = buildInviteLink(token);
 
   const html = buildInviteEmail({
@@ -205,23 +199,16 @@ async function sendInvitationEmail({ to, inviterName, companyName, role, token, 
       html,
     });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7376/ingest/d2026b59-fde2-4b44-b199-784e44ae48ce',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'404a50'},body:JSON.stringify({sessionId:'404a50',hypothesisId:'B',location:'email.service.js:sendInvitationEmail:afterResend',message:'resend.emails.send returned',data:{hasError:Boolean(error),errorSummary:error?String(error.message||JSON.stringify(error).slice(0,240)):null,resendId:data?.id??null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     if (error) {
       console.error('[Email] Resend error:', error);
       throw new AppError('Failed to send invitation email', 500);
     }
 
     console.log(
-      `[Email] Invitation | invitee (DB/token): ${originalTo} | delivered to: ${deliveryTo}${mode !== 'direct' ? ` [${mode}]` : ''} | id: ${data.id}`,
+      `[Email] Invitation sent${mode !== 'direct' ? ` [${mode}]` : ''} | id: ${data.id}`,
     );
     return data;
   } catch (err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7376/ingest/d2026b59-fde2-4b44-b199-784e44ae48ce',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'404a50'},body:JSON.stringify({sessionId:'404a50',hypothesisId:'B',location:'email.service.js:sendInvitationEmail:catch',message:'sendInvitationEmail threw',data:{errMessage:err?.message??String(err),statusCode:err?.statusCode??null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     // Don't crash the invitation flow if email fails
     // Log it and let the invitation be created anyway
     console.error('[Email] Send failed:', err.message);

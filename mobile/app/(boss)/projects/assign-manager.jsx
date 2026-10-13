@@ -14,7 +14,7 @@ export default function AssignManager() {
   const [selectedManager, setSelectedManager] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: managers = [], isLoading } = useProjectManagers();
+  const { data: managers = [], isLoading, isError, refetch } = useProjectManagers();
   const assignMutation = useAssignManager(projectId);
 
   const filteredManagers = useMemo(() => {
@@ -93,6 +93,14 @@ export default function AssignManager() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      ) : isError ? (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="cloud-offline-outline" size={52} color={colors.textMuted} />
+          <Text style={styles.emptyText}>Impossible de charger les managers.</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+            <Text style={styles.buttonText}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={filteredManagers}
@@ -159,6 +167,7 @@ const styles = StyleSheet.create({
   selectedTextMuted: { color: 'rgba(255,255,255,0.8)' },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   emptyText: { textAlign: 'center', color: colors.textMuted, marginTop: 16, fontSize: 16 },
+  retryButton: { marginTop: 16, backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12 },
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f0f0f0', padding: 16 },
   selectionInfo: { backgroundColor: colors.primaryLight, padding: 12, borderRadius: 8, marginBottom: 12 },
   selectionText: { color: colors.primary, fontWeight: '600', textAlign: 'center' },

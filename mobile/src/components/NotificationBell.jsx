@@ -11,7 +11,7 @@ import { useMyNotifications } from '../hooks/useNotifications';
  *
  * It polls every 30s automatically via useMyNotifications.
  */
-export default function NotificationBell() {
+export default function NotificationBell({ color = colors.textDark }) {
   const router = useRouter();
   const { data } = useMyNotifications();
   const unreadCount = data?.unreadCount || 0;
@@ -21,7 +21,7 @@ export default function NotificationBell() {
       style={styles.container}
       onPress={() => router.push('/notifications')}
     >
-      <Ionicons name="notifications-outline" size={26} color={colors.textDark} />
+      <Ionicons name="notifications-outline" size={26} color={color} />
       {unreadCount > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>

@@ -38,6 +38,9 @@ TeamMember.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 Project.hasMany(Task, { as: 'tasks', foreignKey: 'projectId' });  
 Task.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });  
 
+Project.hasMany(File, { as: 'files', foreignKey: 'projectId' });
+File.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
+
 // User ↔ Task
 User.hasMany(Task, { as: 'assignedTasks', foreignKey: 'assignedTo' });
 Task.belongsTo(User, { as: 'assignee', foreignKey: 'assignedTo' });
@@ -48,6 +51,9 @@ Task.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
 // Task ↔ File
 Task.hasMany(File, { as: 'files', foreignKey: 'taskId' });  
 File.belongsTo(Task, { as: 'task', foreignKey: 'taskId' });  
+
+User.hasMany(File, { as: 'uploadedFiles', foreignKey: 'uploadedBy' });
+File.belongsTo(User, { as: 'uploader', foreignKey: 'uploadedBy' });
 
 // Report ↔ File
 Report.hasMany(File, { as: 'files', foreignKey: 'reportId' });  

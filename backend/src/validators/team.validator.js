@@ -13,7 +13,7 @@ const updateTeamSchema = Joi.object({
 
 const addMemberSchema = Joi.object({
     userId: Joi.string().uuid().required(),
-    roleInTeam: Joi.string().default('MEMBER')
+    roleInTeam: Joi.string().default('WORKER')
 });
 
 const updateMemberSchema = Joi.object({

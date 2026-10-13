@@ -7,17 +7,17 @@ describe('Auth - Register & Login', () => {
     lastName: 'User',
     email: 'test@test.com',
     password: 'password123',
-    role: 'BOSS',
+    companyName: 'Test Company',
   };
 
   it('should register a user', async () => {
     const res = await request(app)
-      .post('/api/auth/register')
+      .post('/api/auth/register-boss')
       .send(userPayload);
 
     expect(res.statusCode).toBe(201);
-    expect(res.body).toHaveProperty('user');
-    expect(res.body).toHaveProperty('token');
+    expect(res.body.data).toHaveProperty('user');
+    expect(res.body.data).toHaveProperty('token');
   });
 
   it('should login the user', async () => {
@@ -29,8 +29,8 @@ describe('Auth - Register & Login', () => {
       });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toHaveProperty('user');
-    expect(res.body).toHaveProperty('token');
-    expect(res.body.user.email).toBe(userPayload.email);
+    expect(res.body.data).toHaveProperty('user');
+    expect(res.body.data).toHaveProperty('token');
+    expect(res.body.data.user.email).toBe(userPayload.email);
   });
 });

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput,
+  ActivityIndicator, Alert, Modal, TextInput, Image,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
 import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import { useTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../../../../../src/hooks/useTasks';
+import { useTaskUpdates } from '../../../../../src/hooks/useTaskUpdates';
 import { useProjectTeam } from '../../../../../src/hooks/useProjects';
 
 export default function ManagerTaskDetail() {
@@ -22,6 +23,13 @@ export default function ManagerTaskDetail() {
 
   // ─── Queries ─────────────────────────────────────────────────────────────
   const { data: task, isLoading } = useTask(taskId);
+  const {
+    data: updates = [],
+    isLoading: updatesLoading,
+    isError: updatesError,
+    isFetching: updatesFetching,
+    refetch: refetchUpdates,
+  } = useTaskUpdates(taskId);
   const { data: teamData } = useProjectTeam(task?.projectId);
   const assignees = teamData?.members || [];
   const filteredAssignees = assignees.filter((m) => {
@@ -37,6 +45,12 @@ export default function ManagerTaskDetail() {
   useEffect(() => {
     if (task) setEditForm(task);
   }, [task?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (taskId) refetchUpdates();
+    }, [taskId, refetchUpdates])
+  );
 
   // ─── Mutations ────────────────────────────────────────────────────────────
   const updateStatusMutation = useUpdateTaskStatus(taskId, task?.projectId);
@@ -164,6 +178,37 @@ export default function ManagerTaskDetail() {
                 <Text style={styles.assigneeRole}>Assigné à</Text>
               </View>
             </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Progression et mises à jour</Text>
+            {updatesFetching && !updatesLoading && (
+              <ActivityIndicator size="small" color={colors.primary} />
+            )}
+          </View>
+
+          {updatesLoading ? (
+            <View style={styles.updateState}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.stateText}>Chargement des mises à jour...</Text>
+            </View>
+          ) : updatesError ? (
+            <View style={styles.updateState}>
+              <Ionicons name="cloud-offline-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.stateText}>Impossible de charger les mises à jour.</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => refetchUpdates()}>
+                <Text style={styles.retryButtonText}>Réessayer</Text>
+              </TouchableOpacity>
+            </View>
+          ) : updates.length === 0 ? (
+            <View style={styles.updateState}>
+              <Ionicons name="time-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.stateText}>Aucune mise à jour pour cette tâche.</Text>
+            </View>
+          ) : (
+            updates.map((update) => <TaskUpdateCard key={update.id} update={update} />)
           )}
         </View>
 
@@ -374,6 +419,64 @@ export default function ManagerTaskDetail() {
   );
 }
 
+function TaskUpdateCard({ update }) {
+  const author = update.user
+    ? `${update.user.firstName || ''} ${update.user.lastName || ''}`.trim()
+    : 'Utilisateur inconnu';
+  const timestamp = update.createdAt ? new Date(update.createdAt) : null;
+  const hasValidTimestamp = timestamp && !Number.isNaN(timestamp.getTime());
+  const statusLabel = update.type === 'DONE' ? 'Terminé' : update.type === 'BLOCKED' ? 'Bloqué' : update.type || 'Mise à jour';
+  const message = update.message || update.description;
+
+  return (
+    <View style={styles.updateCard}>
+      <View style={styles.updateHeader}>
+        <View style={[styles.updateType, update.type === 'BLOCKED' ? styles.blockedType : styles.doneType]}>
+          <Text style={styles.updateTypeText}>{statusLabel}</Text>
+        </View>
+        <Text style={styles.updateDate}>
+          {hasValidTimestamp ? timestamp.toLocaleString('fr-FR') : 'Date inconnue'}
+        </Text>
+      </View>
+
+      <View style={styles.authorRow}>
+        <Ionicons name="person-circle-outline" size={18} color={colors.textMuted} />
+        <Text style={styles.authorText}>{author}</Text>
+      </View>
+
+      {!!message && <Text style={styles.updateMessage}>{message}</Text>}
+      {!!update.imageUrl && <TaskUpdateImage uri={update.imageUrl} />}
+    </View>
+  );
+}
+
+function TaskUpdateImage({ uri }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [uri]);
+
+  if (!/^https?:\/\//i.test(uri) || imageFailed) {
+    return (
+      <View style={styles.imageFallback}>
+        <Ionicons name="image-outline" size={28} color={colors.textMuted} />
+        <Text style={styles.imageFallbackText}>Photo indisponible</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.updateImage}
+      resizeMode="cover"
+      onError={() => setImageFailed(true)}
+      accessibilityLabel="Photo de la mise à jour"
+    />
+  );
+}
+
 const getStatusColor = (s) => ({ TODO: '#E3F2FD', IN_PROGRESS: '#E8F5E9', BLOCKED: '#FFEBEE', COMPLETED: '#F3E5F5' }[s]);
 const getPriorityColor = (p) => ({ LOW: '#E8F5E9', NORMAL: '#E3F2FD', HIGH: '#FFF3E0', URGENT: '#FFEBEE' }[p]);
 
@@ -382,6 +485,26 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollContent: { padding: 20 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 24 },
+  section: { marginBottom: 24 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textDark },
+  updateState: { backgroundColor: '#fff', borderRadius: 12, padding: 20, alignItems: 'center' },
+  stateText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', marginTop: 8 },
+  retryButton: { marginTop: 12, backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  retryButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  updateCard: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10 },
+  updateHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 },
+  updateType: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  doneType: { backgroundColor: '#E8F5E9' },
+  blockedType: { backgroundColor: '#FFEBEE' },
+  updateTypeText: { fontSize: 12, fontWeight: '700', color: colors.textDark },
+  updateDate: { flex: 1, color: colors.textMuted, fontSize: 12, textAlign: 'right' },
+  authorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  authorText: { color: colors.textMuted, fontSize: 13, marginLeft: 6 },
+  updateMessage: { color: colors.textDark, fontSize: 14, lineHeight: 20, marginBottom: 10 },
+  updateImage: { width: '100%', height: 180, borderRadius: 10, backgroundColor: '#F2F2F2' },
+  imageFallback: { height: 100, borderRadius: 10, backgroundColor: '#F2F2F2', justifyContent: 'center', alignItems: 'center' },
+  imageFallbackText: { color: colors.textMuted, fontSize: 13, marginTop: 6 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   taskTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textDark, flex: 1 },
   statusContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },

@@ -1,14 +1,10 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
+const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api/';
+
 const api = axios.create({
-  baseURL: 'http://10.0.2.2:5000/api/',
-  // baseURL: 'http://192.168.1.12:5000/api/',
-  // baseURL: 'http://192.168.1.140:5000/api/',
-  // baseURL: 'http://192.168.1.105:5000/api/',
-  // baseURL: 'http://192.168.100.33:5000/api/',
-  // baseURL: 'http://192.168.100.217:5000/api/',
-  // baseURL: 'http://192.168.68.102:5000/api/',
+  baseURL: apiBaseUrl,
   timeout: 10000,
 });
 

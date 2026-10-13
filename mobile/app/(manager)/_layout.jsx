@@ -62,6 +62,13 @@ export default function ManagerLayout() {
           title: 'Équipe du Projet',
         }}
       />
+
+      <Stack.Screen
+        name="projects/[id]/files/files"
+        options={{
+          title: 'Fichiers du Projet',
+        }}
+      />
     </Stack>
   );
 }

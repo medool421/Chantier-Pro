@@ -1,6 +1,7 @@
 const { TaskUpdate, Task, Project, User } = require('../models');
 const AppError = require('../utils/AppError');
 const cloudinary = require('../config/cloudinary');
+const { assertAuthorizedProject } = require('../utils/projectAccess');
 
 function uploadTaskUpdateImage(file) {
   return new Promise((resolve, reject) => {
@@ -23,19 +24,30 @@ function uploadTaskUpdateImage(file) {
   });
 }
 
-async function findTaskInCompany(taskId, companyId) {
+async function findAuthorizedTask(taskId, user) {
   const task = await Task.findByPk(taskId, {
     include: [
       {
         model: Project,
         as: 'project',
-        attributes: ['id', 'companyId'],
+        attributes: ['id', 'companyId', 'managerId', 'bossId'],
       },
     ],
   });
 
-  if (!task || !task.project || task.project.companyId !== companyId) {
+  if (!task || !task.project) {
     throw new AppError('Task not found', 404);
+  }
+
+  if (user.role === 'WORKER') {
+    if (!task.project.companyId || task.project.companyId !== user.companyId) {
+      throw new AppError('Task not found', 404);
+    }
+    if (task.assignedTo !== user.id) {
+      throw new AppError('You can only access updates for your own tasks', 403);
+    }
+  } else {
+    assertAuthorizedProject(task.project, user);
   }
 
   return task;
@@ -44,7 +56,7 @@ async function findTaskInCompany(taskId, companyId) {
 async function createTaskUpdate(data, file, user) {
   const { taskId, type, message } = data;
 
-  await findTaskInCompany(taskId, user.companyId);
+  await findAuthorizedTask(taskId, user);
 
   if (!file) {
     throw new AppError('Image is required', 400);
@@ -73,7 +85,7 @@ async function createTaskUpdate(data, file, user) {
 }
 
 async function getTaskUpdatesByTask(taskId, user) {
-  await findTaskInCompany(taskId, user.companyId);
+  await findAuthorizedTask(taskId, user);
 
   return TaskUpdate.findAll({
     where: {

@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { notificationsService } from '../api/notifications.service';
 
 // Configure how notifications appear when app is in foreground
@@ -21,6 +22,16 @@ export const registerPushToken = async () => {
     // Push notifications only work on physical devices
     if (!Device.isDevice) {
       console.log('[Push] Skipped — running on simulator/emulator');
+      return;
+    }
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ||
+      Constants.easConfig?.projectId;
+    const hasAndroidFirebaseConfig = !!Constants.expoConfig?.android?.googleServicesFile;
+
+    if (Platform.OS === 'android' && !hasAndroidFirebaseConfig) {
+      console.log('[Push] Skipped - Android Firebase config is missing');
       return;
     }
 
@@ -49,7 +60,9 @@ export const registerPushToken = async () => {
     }
 
     // Get Expo push token
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
     const token = tokenData.data;
 
     // Save token to backend

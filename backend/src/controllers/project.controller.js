@@ -17,7 +17,7 @@ exports.createProject = catchAsync(async (req, res) => {
 
 exports.getProjects = catchAsync(async (req, res) => {
   const projects = await projectService.getAllProjects(
-    req.user.id,
+    req.user,
     req.query
   );
 
@@ -30,7 +30,7 @@ exports.getProjects = catchAsync(async (req, res) => {
 exports.getProject = catchAsync(async (req, res) => {
   const project = await projectService.getProjectById(
     req.params.id,
-    req.user.id
+    req.user
   );
 
   res.json({
@@ -43,7 +43,7 @@ exports.updateProject = catchAsync(async (req, res) => {
   const project = await projectService.updateProject(
     req.params.id,
     req.body,
-    req.user.id
+    req.user
   );
 
   res.json({
@@ -56,7 +56,7 @@ exports.updateProjectStatus = catchAsync(async (req, res) => {
   const project = await projectService.updateStatus(
     req.params.id,
     req.body.status,
-    req.user.id
+    req.user
   );
 
   res.json({
@@ -68,7 +68,7 @@ exports.updateProjectStatus = catchAsync(async (req, res) => {
 exports.deleteProject = catchAsync(async (req, res) => {
   await projectService.deleteProject(
     req.params.id,
-    req.user.id
+    req.user
   );
 
   res.status(204).send();
@@ -78,7 +78,7 @@ exports.assignManager = catchAsync(async (req, res) => {
   const project = await projectService.assignManager(
     req.params.id,
     req.body.managerId,
-    req.user.id
+    req.user
   );
 
   res.json({
@@ -107,7 +107,7 @@ exports.getWorkers = catchAsync(async (req, res) => {
 
 exports.getMyProject = async (req, res, next) => {
   try {
-    const project = await projectService.getProjectByManager(req.user.id);
+    const project = await projectService.getProjectByManager(req.user);
 
     return res.status(200).json({
       success: true,
@@ -120,7 +120,7 @@ exports.getMyProject = async (req, res, next) => {
 
 exports.getProjectTeam = async (req, res, next) => {
   try {
-    const team = await teamService.getProjectTeam(req.params.id);
+    const team = await teamService.getProjectTeam(req.params.id, req.user);
 
     res.status(200).json({
       success: true,
