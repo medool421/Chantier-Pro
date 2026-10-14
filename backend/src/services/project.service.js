@@ -3,8 +3,12 @@ const User = require('../models/User');
 const Task = require('../models/Task');
 const TeamMember = require('../models/TeamMember');
 const AppError = require('../utils/AppError');
-
 const { Op } = require('sequelize');
+
+const {
+  findAuthorizedProject,
+  projectAccessWhere,
+} = require('../utils/projectAccess');
 
 async function createProject(data, bossId, companyId) {
   return Project.create({
@@ -14,13 +18,8 @@ async function createProject(data, bossId, companyId) {
   });
 }
 
-async function getAllProjects(userId, filters = {}) {
-  const where = {
-    [Op.or]: [
-      { bossId: userId },
-      { managerId: userId }
-    ]
-  };
+async function getAllProjects(user, filters = {}) {
+  const where = projectAccessWhere(user);
 
   if (filters.status) {
     where.status = filters.status;
@@ -40,24 +39,13 @@ async function getAllProjects(userId, filters = {}) {
   });
 }
 
-async function getProjectById(id, userId) {
-  const project = await Project.findOne({
-    where: {
-      id,
-      [Op.or]: [
-        { bossId: userId },
-        { managerId: userId }
-      ]
-    },
+async function getProjectById(id, user) {
+  const project = await findAuthorizedProject(id, user, {
     include: [
       { model: User, as: 'manager', attributes: ['id', 'firstName', 'lastName'] },
       { model: User, as: 'boss', attributes: ['id', 'firstName', 'lastName'] }
     ]
   });
-
-  if (!project) {
-    throw new AppError('Project not found or access denied', 404);
-  }
 
   // ADD THIS
   const progress = await calculateProgress(project.id);
@@ -69,45 +57,36 @@ async function getProjectById(id, userId) {
 }
 
 
-async function updateProject(id, data, userId) {
-  const project = await getProjectById(id, userId);
+async function updateProject(id, data, user) {
+  const project = await findAuthorizedProject(id, user);
   await project.update(data);
-  return project;
+  return getProjectById(id, user);
 }
 
-async function updateStatus(id, status, userId) {
-  const project = await getProjectById(id, userId);
+async function updateStatus(id, status, user) {
+  const project = await findAuthorizedProject(id, user);
   project.status = status;
   await project.save();
-  return project;
+
+  // return the full enriched object via getProjectById
+  return getProjectById(id, user);
 }
 
-async function deleteProject(id, bossId) {
-  const project = await Project.findOne({
-    where: { id, bossId },
-  });
-
-  if (!project) {
-    throw new AppError('Project not found or not authorized', 404);
-  }
-
+async function deleteProject(id, user) {
+  const project = await findAuthorizedProject(id, user);
   await project.destroy();
 }
 
-async function assignManager(projectId, managerId, bossId) {
-  const project = await Project.findOne({
-    where: { id: projectId, bossId },
-  });
-
-  if (!project) {
-    throw new AppError('Project not found or not authorized', 404);
-  }
+async function assignManager(projectId, managerId, bossUser) {
+  const project = await findAuthorizedProject(projectId, bossUser);
 
   const manager = await User.findOne({
     where: {
       id: managerId,
       role: 'MANAGER',
       isActive: true,
+      status: 'ACTIVE',
+      companyId: bossUser.companyId,
     },
   });
 
@@ -126,9 +105,23 @@ async function getManagers(companyId) {
     where: {
       role: 'MANAGER',
       isActive: true,
+      status: 'ACTIVE',
       companyId,
     },
     attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+  });
+}
+
+async function getWorkers(companyId) {
+  return User.findAll({
+    where: {
+      role: 'WORKER',
+      isActive: true,
+      status: 'ACTIVE',
+      companyId,
+    },
+    attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+    order: [['firstName', 'ASC']],
   });
 }
 
@@ -148,9 +141,12 @@ async function calculateProgress(projectId) {
 }
 
 
-async function getProjectByManager(managerId) {
-  const project = await Project.findAll({
-    where: { managerId },
+async function getProjectByManager(user) {
+  const projects = await Project.findAll({
+    where: {
+      ...projectAccessWhere(user),
+      managerId: user.id,
+    },
     include: [
       {
         model: User,
@@ -161,7 +157,17 @@ async function getProjectByManager(managerId) {
     order: [['createdAt', 'DESC']],
   });
 
-  return project;
+  const projectsWithProgress = await Promise.all(
+    projects.map(async (project) => {
+      const progress = await calculateProgress(project.id);
+      return {
+        ...project.toJSON(),
+        progressPercentage: progress,
+      };
+    })
+  );
+
+  return projectsWithProgress;
 }
 
 
@@ -175,6 +181,7 @@ module.exports = {
   deleteProject,
   assignManager,
   getManagers,
+  getWorkers,
   calculateProgress,
   getProjectByManager,
 };

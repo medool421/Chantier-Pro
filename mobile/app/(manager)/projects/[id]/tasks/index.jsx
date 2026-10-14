@@ -27,7 +27,12 @@ export default function ManagerTasksList() {
   const renderTaskItem = ({ item }) => (
     <TouchableOpacity
       style={styles.taskCard}
-      onPress={() => router.push(`/(manager)/projects/[id]/tasks/${item.id}`)}
+      onPress={() =>
+        router.push({
+          pathname: `/(manager)/projects/${resolvedProjectId}/tasks/${item.id}`,
+          params: { projectId: resolvedProjectId },
+        })
+      }
     >
       <View style={styles.taskHeader}>
         <View style={{ flex: 1 }}>

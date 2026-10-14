@@ -30,7 +30,7 @@ exports.getTaskById = catchAsync(async (req, res) => {
 });
 
 exports.getMyTasks = catchAsync(async (req, res) => {
-  const tasks = await taskService.getMyTasks(req.user.id);
+  const tasks = await taskService.getMyTasks(req.user);
 
   res.json({ success: true, data: tasks });
 });

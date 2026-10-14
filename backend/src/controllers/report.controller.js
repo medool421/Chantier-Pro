@@ -5,7 +5,7 @@ exports.createReport = catchAsync(async (req, res) => {
   const report = await reportService.createReport(
     req.params.projectId,
     req.body,
-    req.user.id
+    req.user
   );
 
   res.status(201).json({

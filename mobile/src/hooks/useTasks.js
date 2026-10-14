@@ -33,6 +33,10 @@ export const useCreateTask = (projectId) =>
     mutationFn: (data) => tasksService.create(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.byProject(projectId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.manager.myProjects });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.detail(projectId) });
+      }
     },
   });
 
@@ -41,8 +45,10 @@ export const useUpdateTask = (id, projectId) =>
     mutationFn: (data) => tasksService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.detail(id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.manager.myProjects });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.byProject(projectId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.detail(projectId) });
       }
     },
   });
@@ -53,8 +59,10 @@ export const useUpdateTaskStatus = (id, projectId) =>
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.detail(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.mine });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.manager.myProjects });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.byProject(projectId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.detail(projectId) });
       }
     },
   });
@@ -63,8 +71,10 @@ export const useDeleteTask = (projectId) =>
   useMutation({
     mutationFn: (id) => tasksService.delete(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.manager.myProjects });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.byProject(projectId) });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.detail(projectId) });
       }
     },
   });

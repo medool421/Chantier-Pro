@@ -9,6 +9,7 @@ import { useAuthStore } from '../../../src/store/auth.store';
 import { useManagerProjects } from '../../../src/hooks/useProjects';
 import { colors } from '../../../src/theme/colors';
 import { PROJECT_STATUS_LABELS } from '../../../src/utils/constants';
+import NotificationBell from '../../../src/components/NotificationBell';
 
 const getStatusColor = (s) => ({
   PLANNED: '#E3F2FD',
@@ -111,9 +112,12 @@ export default function ManagerDashboard() {
           </Text>
           <Text style={styles.role}>Chef de Chantier</Text>
         </View>
-        <View style={styles.statsBox}>
-          <Text style={styles.statsNumber}>{projects.length}</Text>
-          <Text style={styles.statsLabel}>Chantier{projects.length > 1 ? 's' : ''}</Text>
+        <View style={styles.headerActions}>
+          <NotificationBell color="#fff" />
+          <View style={styles.statsBox}>
+            <Text style={styles.statsNumber}>{projects.length}</Text>
+            <Text style={styles.statsLabel}>Chantier{projects.length > 1 ? 's' : ''}</Text>
+          </View>
         </View>
       </View>
 
@@ -172,6 +176,7 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
   username: { fontSize: 22, fontWeight: '800', color: '#fff', marginTop: 2 },
   role: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   statsBox: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12,

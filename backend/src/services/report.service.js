@@ -1,44 +1,29 @@
 const { Report, Project, User } = require('../models');
 const AppError = require('../utils/AppError');
+const { findAuthorizedProject } = require('../utils/projectAccess');
 
-async function createReport(projectId, data, managerId) {
-  const project = await Project.findOne({
-    where: { id: projectId, managerId },
-  });
-
-  if (!project) {
-    throw new AppError('Project not found or access denied', 404);
-  }
+async function createReport(projectId, data, user) {
+  await findAuthorizedProject(projectId, user);
 
   return Report.create({
     type: data.type,
     title: data.title,
     content: data.content,
+    reportDate: data.reportDate,
     projectId,
-    createdBy: managerId,
+    userId: user.id,
   });
 }
 
 async function getProjectReports(projectId, user) {
-  const project = await Project.findByPk(projectId);
-
-  if (!project) {
-    throw new AppError('Project not found', 404);
-  }
-
-  if (
-    user.role === 'MANAGER' &&
-    project.managerId !== user.id
-  ) {
-    throw new AppError('Access denied', 403);
-  }
+  await findAuthorizedProject(projectId, user);
 
   return Report.findAll({
     where: { projectId },
     include: [
       {
         model: User,
-        as: 'author',
+        as: 'user',
         attributes: ['id', 'firstName', 'lastName'],
       },
     ],
@@ -51,11 +36,12 @@ async function getReportById(id, user) {
     include: [
       {
         model: Project,
+        as: 'project',
         attributes: ['id', 'name'],
       },
       {
         model: User,
-        as: 'author',
+        as: 'user',
         attributes: ['id', 'firstName', 'lastName'],
       },
     ],
@@ -65,12 +51,7 @@ async function getReportById(id, user) {
     throw new AppError('Report not found', 404);
   }
 
-  if (
-    user.role === 'MANAGER' &&
-    report.createdBy !== user.id
-  ) {
-    throw new AppError('Access denied', 403);
-  }
+  await findAuthorizedProject(report.projectId, user);
 
   return report;
 }

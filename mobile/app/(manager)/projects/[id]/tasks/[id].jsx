@@ -1,34 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput,
+  ActivityIndicator, Alert, Modal, TextInput, Image,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
 import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import { useTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../../../../../src/hooks/useTasks';
+import { useTaskUpdates } from '../../../../../src/hooks/useTaskUpdates';
 import { useProjectTeam } from '../../../../../src/hooks/useProjects';
 
 export default function ManagerTaskDetail() {
   const { id } = useLocalSearchParams();
+  const taskId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [assigneeModalVisible, setAssigneeModalVisible] = useState(false);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [editForm, setEditForm] = useState({});
 
   // ─── Queries ─────────────────────────────────────────────────────────────
-  const { data: task, isLoading } = useTask(id);
+  const { data: task, isLoading } = useTask(taskId);
+  const {
+    data: updates = [],
+    isLoading: updatesLoading,
+    isError: updatesError,
+    isFetching: updatesFetching,
+    refetch: refetchUpdates,
+  } = useTaskUpdates(taskId);
   const { data: teamData } = useProjectTeam(task?.projectId);
   const assignees = teamData?.members || [];
+  const filteredAssignees = assignees.filter((m) => {
+    const u = m.user;
+    if (!u) return false;
+    if (!assigneeSearchQuery.trim()) return true;
+    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const q = assigneeSearchQuery.toLowerCase();
+    return fullName.includes(q) || email.includes(q);
+  });
 
   useEffect(() => {
     if (task) setEditForm(task);
   }, [task?.id]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (taskId) refetchUpdates();
+    }, [taskId, refetchUpdates])
+  );
+
   // ─── Mutations ────────────────────────────────────────────────────────────
-  const updateStatusMutation = useUpdateTaskStatus(id, task?.projectId);
-  const updateTaskMutation = useUpdateTask(id, task?.projectId);
+  const updateStatusMutation = useUpdateTaskStatus(taskId, task?.projectId);
+  const updateTaskMutation = useUpdateTask(taskId, task?.projectId);
   const deleteTaskMutation = useDeleteTask(task?.projectId);
 
   const handleUpdateStatus = (newStatus) => {
@@ -60,6 +86,13 @@ export default function ManagerTaskDetail() {
     );
   };
 
+  const getSelectedAssigneeLabel = () => {
+    if (!editForm.assigneeId) return 'Non assigné';
+    const selected = assignees.find((m) => m.userId === editForm.assigneeId);
+    if (!selected?.user) return 'Non assigné';
+    return `${selected.user.firstName} ${selected.user.lastName}`;
+  };
+
   const handleDeleteTask = () => {
     Alert.alert(
       'Confirmer la suppression',
@@ -70,7 +103,7 @@ export default function ManagerTaskDetail() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: () => {
-            deleteTaskMutation.mutate(id, {
+            deleteTaskMutation.mutate(taskId, {
               onSuccess: () => {
                 Alert.alert('Succès', 'Tâche supprimée');
                 router.back();
@@ -148,6 +181,37 @@ export default function ManagerTaskDetail() {
           )}
         </View>
 
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Progression et mises à jour</Text>
+            {updatesFetching && !updatesLoading && (
+              <ActivityIndicator size="small" color={colors.primary} />
+            )}
+          </View>
+
+          {updatesLoading ? (
+            <View style={styles.updateState}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.stateText}>Chargement des mises à jour...</Text>
+            </View>
+          ) : updatesError ? (
+            <View style={styles.updateState}>
+              <Ionicons name="cloud-offline-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.stateText}>Impossible de charger les mises à jour.</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => refetchUpdates()}>
+                <Text style={styles.retryButtonText}>Réessayer</Text>
+              </TouchableOpacity>
+            </View>
+          ) : updates.length === 0 ? (
+            <View style={styles.updateState}>
+              <Ionicons name="time-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.stateText}>Aucune mise à jour pour cette tâche.</Text>
+            </View>
+          ) : (
+            updates.map((update) => <TaskUpdateCard key={update.id} update={update} />)
+          )}
+        </View>
+
         {/* Delete */}
         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteTask}>
           <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -215,23 +279,28 @@ export default function ManagerTaskDetail() {
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Assigné à</Text>
-                {assignees.map((m) => {
-                  const u = m.user;
-                  if (!u) return null;
-                  return (
-                    <TouchableOpacity
-                      key={m.userId}
-                      style={[styles.assigneeOption, editForm.assigneeId === m.userId && styles.assigneeSelected]}
-                      onPress={() => setEditForm({ ...editForm, assigneeId: m.userId })}
-                    >
-                      <View style={styles.avatarSmall}>
-                        <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
-                      </View>
-                      <Text style={styles.assigneeOptionText}>{u.firstName} {u.lastName}</Text>
-                      {editForm.assigneeId === m.userId && <Ionicons name="checkmark" size={18} color={colors.primary} />}
-                    </TouchableOpacity>
-                  );
-                })}
+                <TouchableOpacity
+                  style={styles.selectorCard}
+                  onPress={() => {
+                    setAssigneeModalVisible(true);
+                    setAssigneeSearchQuery('');
+                  }}
+                >
+                  <View style={styles.selectorInfo}>
+                    <View style={styles.avatarSelector}>
+                      {editForm.assigneeId ? (
+                        <Text style={styles.avatarSelectorText}>
+                          {assignees.find((m) => m.userId === editForm.assigneeId)?.user?.firstName?.[0]}
+                          {assignees.find((m) => m.userId === editForm.assigneeId)?.user?.lastName?.[0]}
+                        </Text>
+                      ) : (
+                        <Ionicons name="person-outline" size={20} color={colors.primary} />
+                      )}
+                    </View>
+                    <Text style={styles.selectorText}>{getSelectedAssigneeLabel()}</Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.buttonRow}>
@@ -252,7 +321,159 @@ export default function ManagerTaskDetail() {
           </View>
         </View>
       </Modal>
+
+      {/* ASSIGNEE PICKER MODAL - same UX as tasks/create */}
+      <Modal
+        visible={assigneeModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          setAssigneeModalVisible(false);
+          setAssigneeSearchQuery('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>Choisir un ouvrier</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setAssigneeModalVisible(false);
+                  setAssigneeSearchQuery('');
+                }}
+              >
+                <Ionicons name="close" size={24} color={colors.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher..."
+                value={assigneeSearchQuery}
+                onChangeText={setAssigneeSearchQuery}
+              />
+              {assigneeSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setAssigneeSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.workerModalItem, !editForm.assigneeId && styles.workerModalItemSelected]}
+              onPress={() => {
+                setEditForm({ ...editForm, assigneeId: null });
+                setAssigneeModalVisible(false);
+                setAssigneeSearchQuery('');
+              }}
+            >
+              <View style={styles.avatarSmall}>
+                <Ionicons name="person-remove-outline" size={18} color={!editForm.assigneeId ? '#fff' : colors.primary} />
+              </View>
+              <Text style={[styles.workerName, !editForm.assigneeId && styles.selectedTextColor]}>
+                Non assigné
+              </Text>
+              {!editForm.assigneeId && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+            </TouchableOpacity>
+
+            <ScrollView style={{ maxHeight: 320 }}>
+              {filteredAssignees.map((m) => {
+                const u = m.user;
+                if (!u) return null;
+                return (
+                  <TouchableOpacity
+                    key={m.userId}
+                    style={[styles.workerModalItem, editForm.assigneeId === m.userId && styles.workerModalItemSelected]}
+                    onPress={() => {
+                      setEditForm({ ...editForm, assigneeId: m.userId });
+                      setAssigneeModalVisible(false);
+                      setAssigneeSearchQuery('');
+                    }}
+                  >
+                    <View style={styles.avatarSmall}>
+                      <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
+                    </View>
+                    <Text style={[styles.workerName, editForm.assigneeId === m.userId && styles.selectedTextColor]}>
+                      {u.firstName} {u.lastName}
+                    </Text>
+                    {editForm.assigneeId === m.userId && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+                  </TouchableOpacity>
+                );
+              })}
+
+              {filteredAssignees.length === 0 && (
+                <View style={styles.emptyAssigneeContainer}>
+                  <Ionicons name="people-outline" size={36} color={colors.textMuted} />
+                  <Text style={styles.emptyAssigneeText}>
+                    {assigneeSearchQuery ? 'Aucun resultat trouve' : 'Aucun ouvrier disponible'}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
+  );
+}
+
+function TaskUpdateCard({ update }) {
+  const author = update.user
+    ? `${update.user.firstName || ''} ${update.user.lastName || ''}`.trim()
+    : 'Utilisateur inconnu';
+  const timestamp = update.createdAt ? new Date(update.createdAt) : null;
+  const hasValidTimestamp = timestamp && !Number.isNaN(timestamp.getTime());
+  const statusLabel = update.type === 'DONE' ? 'Terminé' : update.type === 'BLOCKED' ? 'Bloqué' : update.type || 'Mise à jour';
+  const message = update.message || update.description;
+
+  return (
+    <View style={styles.updateCard}>
+      <View style={styles.updateHeader}>
+        <View style={[styles.updateType, update.type === 'BLOCKED' ? styles.blockedType : styles.doneType]}>
+          <Text style={styles.updateTypeText}>{statusLabel}</Text>
+        </View>
+        <Text style={styles.updateDate}>
+          {hasValidTimestamp ? timestamp.toLocaleString('fr-FR') : 'Date inconnue'}
+        </Text>
+      </View>
+
+      <View style={styles.authorRow}>
+        <Ionicons name="person-circle-outline" size={18} color={colors.textMuted} />
+        <Text style={styles.authorText}>{author}</Text>
+      </View>
+
+      {!!message && <Text style={styles.updateMessage}>{message}</Text>}
+      {!!update.imageUrl && <TaskUpdateImage uri={update.imageUrl} />}
+    </View>
+  );
+}
+
+function TaskUpdateImage({ uri }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [uri]);
+
+  if (!/^https?:\/\//i.test(uri) || imageFailed) {
+    return (
+      <View style={styles.imageFallback}>
+        <Ionicons name="image-outline" size={28} color={colors.textMuted} />
+        <Text style={styles.imageFallbackText}>Photo indisponible</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.updateImage}
+      resizeMode="cover"
+      onError={() => setImageFailed(true)}
+      accessibilityLabel="Photo de la mise à jour"
+    />
   );
 }
 
@@ -264,6 +485,26 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollContent: { padding: 20 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 24 },
+  section: { marginBottom: 24 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textDark },
+  updateState: { backgroundColor: '#fff', borderRadius: 12, padding: 20, alignItems: 'center' },
+  stateText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', marginTop: 8 },
+  retryButton: { marginTop: 12, backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  retryButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  updateCard: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10 },
+  updateHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 },
+  updateType: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  doneType: { backgroundColor: '#E8F5E9' },
+  blockedType: { backgroundColor: '#FFEBEE' },
+  updateTypeText: { fontSize: 12, fontWeight: '700', color: colors.textDark },
+  updateDate: { flex: 1, color: colors.textMuted, fontSize: 12, textAlign: 'right' },
+  authorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  authorText: { color: colors.textMuted, fontSize: 13, marginLeft: 6 },
+  updateMessage: { color: colors.textDark, fontSize: 14, lineHeight: 20, marginBottom: 10 },
+  updateImage: { width: '100%', height: 180, borderRadius: 10, backgroundColor: '#F2F2F2' },
+  imageFallback: { height: 100, borderRadius: 10, backgroundColor: '#F2F2F2', justifyContent: 'center', alignItems: 'center' },
+  imageFallbackText: { color: colors.textMuted, fontSize: 13, marginTop: 6 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   taskTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textDark, flex: 1 },
   statusContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
@@ -299,9 +540,28 @@ const styles = StyleSheet.create({
   prioritySelected: { backgroundColor: colors.primary },
   priorityOptionText: { fontSize: 14, color: colors.textDark, fontWeight: '600' },
   prioritySelectedText: { color: '#fff' },
-  assigneeOption: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: '#F5F5F5', marginBottom: 8 },
-  assigneeSelected: { backgroundColor: colors.primaryLight },
-  assigneeOptionText: { flex: 1, fontSize: 14, color: colors.textDark, fontWeight: '600' },
+  selectorCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 12, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E0E0E0' },
+  selectorInfo: { flexDirection: 'row', alignItems: 'center' },
+  selectorText: { fontSize: 16, color: colors.textDark, marginLeft: 12, fontWeight: '500' },
+  avatarSelector: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  avatarSelectorText: { fontSize: 14, fontWeight: 'bold', color: colors.primary },
+  workerModalItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, marginBottom: 8, backgroundColor: '#F9F9F9' },
+  workerModalItemSelected: { backgroundColor: colors.primary },
+  workerName: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.textDark },
+  selectedTextColor: { color: '#fff' },
+  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 15 },
+  emptyAssigneeContainer: { alignItems: 'center', paddingVertical: 20 },
+  emptyAssigneeText: { color: colors.textMuted, marginTop: 8, fontSize: 13 },
   avatarSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   avatarSmallText: { fontSize: 12, fontWeight: 'bold', color: colors.primary },
   buttonRow: { flexDirection: 'row', gap: 12 },

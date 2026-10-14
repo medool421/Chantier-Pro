@@ -147,6 +147,20 @@ export default function ManagerProjectDetails() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push({ pathname: `/(manager)/projects/${id}/files/files`, params: { id } })}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="folder-open-outline" size={24} color="#388E3C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionCardTitle}>Fichiers</Text>
+              <Text style={styles.actionCardSubtitle}>Ajouter et consulter les fichiers</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
 

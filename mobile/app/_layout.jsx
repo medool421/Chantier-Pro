@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/auth.store';
 import { queryClient } from '../src/utils/queryClient';
 import { colors } from '../src/theme/colors';
+import { deactivateKeepAwake } from 'expo-keep-awake';
 
 export default function RootLayout() {
   const loadUser = useAuthStore((state) => state.loadUser);
@@ -15,6 +16,7 @@ export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    deactivateKeepAwake();
     loadUser();
   }, []);
 

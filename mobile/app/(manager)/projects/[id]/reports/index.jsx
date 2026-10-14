@@ -12,7 +12,13 @@ export default function ManagerReports() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
-  const { data: reports = [], isLoading, isRefetching, refetch } = useProjectReports(id);
+  const {
+    data: reports = [],
+    isLoading,
+    isError,
+    isRefetching,
+    refetch,
+  } = useProjectReports(id);
 
   const getReportIcon = (type) => {
     switch (type) {
@@ -52,6 +58,17 @@ export default function ManagerReports() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>Impossible de charger les rapports.</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -106,4 +123,6 @@ const styles = StyleSheet.create({
   content: { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
   emptyContainer: { alignItems: 'center', marginTop: 60 },
   emptyText: { color: colors.textMuted, marginTop: 16, textAlign: 'center', paddingHorizontal: 40 },
+  retryButton: { marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  retryButtonText: { color: '#fff', fontWeight: '600' },
 });

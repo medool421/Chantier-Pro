@@ -98,6 +98,12 @@ router.get(
   projectController.getManagers
 );
 
+router.get(
+  '/workers',
+  role('BOSS', 'MANAGER'),
+  projectController.getWorkers
+);
+
 /**
  * @swagger
  * /api/projects/my-project:

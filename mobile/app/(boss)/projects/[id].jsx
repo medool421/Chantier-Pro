@@ -241,6 +241,34 @@ export default function ProjectDetails() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push({ pathname: '/(boss)/reports/[projectId]', params: { projectId: id } })}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="document-text-outline" size={24} color="#EF6C00" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionCardTitle}>Rapports</Text>
+              <Text style={styles.actionCardSubtitle}>Voir les rapports du chantier</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push({ pathname: '/(boss)/projects/[id]/files', params: { id } })}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="folder-open-outline" size={24} color="#388E3C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionCardTitle}>Fichiers</Text>
+              <Text style={styles.actionCardSubtitle}>Voir les fichiers du chantier</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         {/* Delete Button */}

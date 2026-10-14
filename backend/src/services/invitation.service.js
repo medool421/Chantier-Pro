@@ -12,9 +12,6 @@ function generateToken() {
 
 // ─── Send an invitation ────────────────────────────────────────────────────
 async function sendInvitation({ email, role, invitedBy, companyId }) {
-  // #region agent log
-  fetch('http://127.0.0.1:7376/ingest/d2026b59-fde2-4b44-b199-784e44ae48ce',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'404a50'},body:JSON.stringify({sessionId:'404a50',hypothesisId:'C',location:'invitation.service.js:sendInvitation:entry',message:'sendInvitation entered',data:{role,emailDomain:typeof email==='string'?email.split('@')[1]:null,hasPlus:typeof email==='string'&&email.includes('+')},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const inviter = await User.findByPk(invitedBy);
   if (!inviter) throw new AppError('Inviter not found', 404);
   if (inviter.companyId !== companyId) throw new AppError('Unauthorized', 403);
@@ -44,9 +41,6 @@ async function sendInvitation({ email, role, invitedBy, companyId }) {
     invitedBy,
   });
 
-  // #region agent log
-  fetch('http://127.0.0.1:7376/ingest/d2026b59-fde2-4b44-b199-784e44ae48ce',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'404a50'},body:JSON.stringify({sessionId:'404a50',hypothesisId:'C',location:'invitation.service.js:sendInvitation:preEmail',message:'invitation row created, calling sendInvitationEmail',data:{invitationId:invitation.id},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   // Send email — after DB insert so invitation exists even if email fails
   await sendInvitationEmail({
     to: email,

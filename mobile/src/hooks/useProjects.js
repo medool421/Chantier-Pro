@@ -32,6 +32,12 @@ export const useProjectManagers = () =>
     queryFn: projectsService.getManagers,
   });
 
+export const useCompanyWorkers = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.projects.workers,
+    queryFn: projectsService.getWorkers,
+  });
+
 export const useProjectTeam = (id) =>
   useQuery({
     queryKey: QUERY_KEYS.projects.team(id),
@@ -82,5 +88,32 @@ export const useDeleteProject = () =>
     mutationFn: projectsService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.all });
+    },
+  });
+
+export const useAddTeamMember = (projectId) =>
+  useMutation({
+    mutationFn: ({ teamId, userId, roleInTeam = 'WORKER' }) =>
+      projectsService.addTeamMember(teamId, { userId, roleInTeam }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.team(projectId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.workers });
+    },
+  });
+
+export const useRemoveTeamMember = (projectId) =>
+  useMutation({
+    mutationFn: ({ teamId, userId }) => projectsService.removeTeamMember(teamId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.team(projectId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.workers });
+    },
+  });
+
+export const useCreateProjectTeam = (projectId) =>
+  useMutation({
+    mutationFn: (payload) => projectsService.createTeam(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.projects.team(projectId) });
     },
   });

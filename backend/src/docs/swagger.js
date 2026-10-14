@@ -202,13 +202,15 @@ TeamListResponse: {
 File: {
   type: 'object',
   properties: {
-    id: { type: 'integer' },
-    filename: { type: 'string' },
+    id: { type: 'string', format: 'uuid' },
     originalName: { type: 'string' },
     mimeType: { type: 'string' },
     size: { type: 'integer' },
-    projectId: { type: 'integer' },
-    url: { type: 'string' },
+    type: { type: 'string', enum: ['BEFORE', 'AFTER', 'ISSUE'] },
+    projectId: { type: 'string', format: 'uuid' },
+    uploadedBy: { type: 'string', format: 'uuid' },
+    createdAt: { type: 'string', format: 'date-time' },
+    downloadUrl: { type: 'string', format: 'uri' },
   },
 },
 

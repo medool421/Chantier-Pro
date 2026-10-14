@@ -1,5 +1,9 @@
 const { Task, User, Project } = require('../models');
 const AppError = require('../utils/AppError');
+const {
+  assertAuthorizedProject,
+  findAuthorizedProject,
+} = require('../utils/projectAccess');
 
 // ─── Shared include for task responses ────────────────────────────────────
 const taskInclude = [
@@ -16,16 +20,24 @@ const taskInclude = [
 ];
 
 // ─── Helper: fetch task and verify it belongs to user's company ───────────
-async function findTaskInCompany(taskId, companyId) {
+async function findTaskInCompany(taskId, user) {
   const task = await Task.findByPk(taskId, {
     include: [
-      { model: Project, as: 'project', attributes: ['id', 'name', 'status', 'description', 'companyId'] },
+      { model: Project, as: 'project', attributes: ['id', 'name', 'status', 'description', 'companyId', 'managerId', 'bossId'] },
       { model: User, as: 'assignee', attributes: ['id', 'firstName', 'lastName', 'email'] },
     ],
   });
 
-  if (!task || task.project.companyId !== companyId) {
+  if (!task || !task.project) {
     throw new AppError('Task not found', 404);
+  }
+
+  if (user.role === 'WORKER') {
+    if (!task.project.companyId || task.project.companyId !== user.companyId) {
+      throw new AppError('Task not found', 404);
+    }
+  } else {
+    assertAuthorizedProject(task.project, user);
   }
 
   return task;
@@ -33,7 +45,7 @@ async function findTaskInCompany(taskId, companyId) {
 
 // ─── Get task by ID ────────────────────────────────────────────────────────
 async function getTaskById(taskId, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
 
   // WORKER can only view their own tasks
   if (user.role === 'WORKER' && task.assignedTo !== user.id) {
@@ -45,13 +57,7 @@ async function getTaskById(taskId, user) {
 
 // ─── Get all tasks for a project ──────────────────────────────────────────
 async function getProjectTasks(projectId, user) {
-  const project = await Project.findOne({
-    where: { id: projectId, companyId: user.companyId },
-  });
-
-  if (!project) {
-    throw new AppError('Project not found', 404);
-  }
+  await findAuthorizedProject(projectId, user);
 
   return Task.findAll({
     where: { projectId },
@@ -61,10 +67,17 @@ async function getProjectTasks(projectId, user) {
 }
 
 // ─── Get tasks assigned to current user ───────────────────────────────────
-async function getMyTasks(userId) {
+async function getMyTasks(user) {
   return Task.findAll({
-    where: { assignedTo: userId },
-    include: taskInclude,
+    where: { assignedTo: user.id },
+    include: [
+      taskInclude[0],
+      {
+        ...taskInclude[1],
+        where: { companyId: user.companyId },
+        required: true,
+      },
+    ],
     order: [
       ['dueDate', 'ASC'],
       ['priority', 'DESC'],
@@ -75,28 +88,24 @@ async function getMyTasks(userId) {
 
 // ─── Create a task ────────────────────────────────────────────────────────
 async function createTask(projectId, taskData, user) {
-  // Verify project belongs to user's company
-  const project = await Project.findOne({
-    where: { id: projectId, companyId: user.companyId },
-  });
+  const project = await findAuthorizedProject(projectId, user);
 
-  if (!project) {
-    throw new AppError('Project not found', 404);
-  }
-
-  // Verify assignee belongs to the same company
+  // Verify assignee belongs to the same company and is active.
   if (taskData.assignedTo) {
     const assignee = await User.findOne({
-      where: { id: taskData.assignedTo, companyId: user.companyId },
+      where: {
+        id: taskData.assignedTo,
+        companyId: project.companyId || user.companyId,
+        role: 'WORKER',
+        isActive: true,
+        status: 'ACTIVE',
+      },
     });
 
     if (!assignee) {
       throw new AppError('Assignee not found in your company', 404);
     }
 
-    if (assignee.role !== 'WORKER') {
-      throw new AppError('Tasks can only be assigned to WORKER role', 400);
-    }
   }
 
   const task = await Task.create({ ...taskData, projectId });
@@ -106,23 +115,25 @@ async function createTask(projectId, taskData, user) {
 
 // ─── Update a task ────────────────────────────────────────────────────────
 async function updateTask(taskId, updates, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
 
-  // Verify new assignee belongs to the same company
+  // Verify new assignee belongs to the same company and is active.
   if ('assigneeId' in updates) {
     if (updates.assigneeId === null) {
       task.assignedTo = null;
     } else {
       const assignee = await User.findOne({
-        where: { id: updates.assigneeId, companyId: user.companyId },
+        where: {
+          id: updates.assigneeId,
+          companyId: task.project.companyId || user.companyId,
+          role: 'WORKER',
+          isActive: true,
+          status: 'ACTIVE',
+        },
       });
 
       if (!assignee) {
         throw new AppError('Assignee not found in your company', 404);
-      }
-
-      if (assignee.role !== 'WORKER') {
-        throw new AppError('Tasks can only be assigned to WORKER role', 400);
       }
 
       task.assignedTo = updates.assigneeId;
@@ -142,7 +153,7 @@ async function updateTask(taskId, updates, user) {
 
 // ─── Update task status ───────────────────────────────────────────────────
 async function updateTaskStatus(taskId, status, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
 
   if (user.role === 'WORKER' && task.assignedTo !== user.id) {
     throw new AppError('You can only update your own tasks', 403);
@@ -155,7 +166,7 @@ async function updateTaskStatus(taskId, status, user) {
 
 // ─── Delete a task ────────────────────────────────────────────────────────
 async function deleteTask(taskId, user) {
-  const task = await findTaskInCompany(taskId, user.companyId);
+  const task = await findTaskInCompany(taskId, user);
   await task.destroy();
   return true;
 }

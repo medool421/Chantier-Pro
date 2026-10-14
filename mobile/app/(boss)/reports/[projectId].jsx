@@ -12,18 +12,18 @@ export default function ProjectReports() {
   const { projectId } = useLocalSearchParams();
   const [selectedReport, setSelectedReport] = useState(null);
 
-  const { data: reports = [], isLoading } = useProjectReports(projectId);
+  const { data: reports = [], isLoading, isError, refetch } = useProjectReports(projectId);
 
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.card} onPress={() => setSelectedReport(item)}>
       <View style={styles.cardHeader}>
-        <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
+        <Text style={styles.date}>{new Date(item.reportDate).toLocaleDateString()}</Text>
         <Ionicons name="documents-outline" size={20} color={colors.primary} />
       </View>
       <Text style={styles.title} numberOfLines={1}>{item.title || 'Rapport journalier'}</Text>
       <Text style={styles.preview} numberOfLines={2}>{item.content}</Text>
       <View style={styles.authorRow}>
-        <Text style={styles.author}>Par: {item.author?.firstName || 'Inconnu'}</Text>
+        <Text style={styles.author}>Par: {item.user?.firstName || 'Inconnu'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -32,6 +32,17 @@ export default function ProjectReports() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>Impossible de charger les rapports.</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -66,14 +77,14 @@ export default function ProjectReports() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.modalDate}>
-                {new Date(selectedReport.date).toLocaleDateString()} - {new Date(selectedReport.date).toLocaleTimeString()}
+                {new Date(selectedReport.reportDate).toLocaleDateString()}
               </Text>
               <View style={styles.divider} />
               <Text style={styles.modalReportTitle}>{selectedReport.title}</Text>
               <Text style={styles.modalBody}>{selectedReport.content}</Text>
               <View style={styles.modalFooter}>
                 <Text style={styles.modalAuthor}>
-                  Rédigé par: {selectedReport.author?.firstName} {selectedReport.author?.lastName}
+                  Rédigé par: {selectedReport.user?.firstName} {selectedReport.user?.lastName}
                 </Text>
               </View>
             </View>
@@ -97,6 +108,8 @@ const styles = StyleSheet.create({
   author: { fontSize: 12, color: colors.textDark, fontStyle: 'italic' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },
   emptyText: { color: colors.textMuted },
+  retryButton: { marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  retryButtonText: { color: '#fff', fontWeight: '600' },
   modalContainer: { flex: 1, backgroundColor: '#fff' },
   modalContent: { padding: 24, flex: 1 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

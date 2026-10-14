@@ -30,6 +30,18 @@ export const projectsService = {
   getManagers: () =>
     api.get('/projects/managers').then((r) => r.data.data),
 
+  getWorkers: () =>
+    api.get('/projects/workers').then((r) => r.data.data),
+
   getTeam: (id) =>
     api.get(`/projects/${id}/team`).then((r) => r.data.data),
+
+  addTeamMember: (teamId, payload) =>
+    api.post(`/teams/${teamId}/members`, payload).then((r) => r.data.data),
+
+  removeTeamMember: (teamId, userId) =>
+    api.delete(`/teams/${teamId}/members/${userId}`).then((r) => r.data),
+
+  createTeam: (payload) =>
+    api.post('/teams', payload).then((r) => r.data.data),
 };

@@ -10,6 +10,7 @@ const Report = require('./Report');
 const Company = require('./Company');
 const Invitation = require('./Invitation');
 const Notification = require('./Notification');
+const TaskUpdate = require('./TaskUpdate');
 
 /* ======================
    RELATIONSHIPS
@@ -37,6 +38,9 @@ TeamMember.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 Project.hasMany(Task, { as: 'tasks', foreignKey: 'projectId' });  
 Task.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });  
 
+Project.hasMany(File, { as: 'files', foreignKey: 'projectId' });
+File.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
+
 // User ↔ Task
 User.hasMany(Task, { as: 'assignedTasks', foreignKey: 'assignedTo' });
 Task.belongsTo(User, { as: 'assignee', foreignKey: 'assignedTo' });
@@ -47,6 +51,9 @@ Task.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
 // Task ↔ File
 Task.hasMany(File, { as: 'files', foreignKey: 'taskId' });  
 File.belongsTo(Task, { as: 'task', foreignKey: 'taskId' });  
+
+User.hasMany(File, { as: 'uploadedFiles', foreignKey: 'uploadedBy' });
+File.belongsTo(User, { as: 'uploader', foreignKey: 'uploadedBy' });
 
 // Report ↔ File
 Report.hasMany(File, { as: 'files', foreignKey: 'reportId' });  
@@ -59,6 +66,14 @@ Report.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
 // User ↔ Report
 User.hasMany(Report, { as: 'reports', foreignKey: 'userId' });  
 Report.belongsTo(User, { as: 'user', foreignKey: 'userId' });  
+
+// Task ↔ TaskUpdate
+Task.hasMany(TaskUpdate, { as: 'updates', foreignKey: 'taskId' });
+TaskUpdate.belongsTo(Task, { as: 'task', foreignKey: 'taskId' });
+
+// User ↔ TaskUpdate
+User.hasMany(TaskUpdate, { as: 'taskUpdates', foreignKey: 'userId' });
+TaskUpdate.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 
 // Company ↔ User
 Company.hasMany(User, { foreignKey: 'companyId' });
@@ -88,4 +103,5 @@ module.exports = {
   Company,
   Invitation,
   Notification,
+  TaskUpdate,
 };

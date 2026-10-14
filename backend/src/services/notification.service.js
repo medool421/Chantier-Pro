@@ -8,6 +8,7 @@ const NOTIFICATION_TYPES = {
   TASK_STATUS_CHANGED:    'TASK_STATUS_CHANGED',
   PROJECT_STATUS_CHANGED: 'PROJECT_STATUS_CHANGED',
   MANAGER_ASSIGNED:       'MANAGER_ASSIGNED',
+  INVITATION_ACCEPTED:    'INVITATION_ACCEPTED',
 };
 
 // ─── Core: save to DB + send push ─────────────────────────────────────────
