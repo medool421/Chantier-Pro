@@ -1,18 +1,20 @@
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   Alert,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
 import { invitationsService } from '../../src/api/invitations.service';
 import { colors } from '../../src/theme/colors';
+import ThemedTextInput from '../../src/components/ThemedTextInput';
 import { Ionicons } from '@expo/vector-icons';
 
 const ROLE_LABELS = {
@@ -116,10 +118,12 @@ export default function InviteRegister() {
 
   // Main UI
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardContainer}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       {/* Banner */}
       <View style={styles.inviteBanner}>
         <Ionicons name="mail-open-outline" size={28} color={colors.primary} />
@@ -140,7 +144,7 @@ export default function InviteRegister() {
       </Text>
 
       {process.env.NODE_ENV === 'development' ? (
-  <TextInput
+  <ThemedTextInput
     placeholder="Email"
     value={email}
     onChangeText={setEmail}
@@ -154,21 +158,21 @@ export default function InviteRegister() {
   </View>
 )}
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Prénom"
         value={firstName}
         onChangeText={setFirstName}
         style={styles.input}
       />
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Nom"
         value={lastName}
         onChangeText={setLastName}
         style={styles.input}
       />
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Mot de passe"
         secureTextEntry
         value={password}
@@ -192,15 +196,18 @@ export default function InviteRegister() {
       <Pressable onPress={() => router.replace('/(auth)/login')}>
         <Text style={styles.link}>J'ai déjà un compte</Text>
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: { flex: 1, backgroundColor: colors.backgroundLight },
   centeredContainer: {
     flex: 1,
     backgroundColor: colors.backgroundLight,
     justifyContent: 'center',
+    paddingBottom: 48,
     alignItems: 'center',
     padding: 32,
   },

@@ -12,7 +12,7 @@ const { removeStoredFile } = require('../utils/fileStorage');
 const { uploadFileSchema } = require('../validators/file.validator');
 
 async function cleanupUploadedFile(req) {
-  if (!req.file?.path) return;
+  if (!req.file || !req.file.path) return;
 
   try {
     await removeStoredFile(req.file.path);
@@ -60,8 +60,8 @@ const validateUpload = (req, res, next) => {
 
 router.use(auth);
 
-// Workers retain the existing upload capability. Project listing and
-// retrieval are intentionally limited to Bosses and assigned Managers.
+// Workers may upload task evidence. Bosses and Managers may upload shared
+// project files; the service enforces the distinction using taskId.
 /**
  * @swagger
  * /api/files:
@@ -73,7 +73,7 @@ router.use(auth);
  */
 router.post(
   '/',
-  role('WORKER', 'MANAGER'),
+  role('BOSS', 'MANAGER', 'WORKER'),
   parseUpload,
   validateUpload,
   fileController.uploadFile
@@ -126,7 +126,7 @@ router.get(
 
 router.delete(
   '/:id',
-  role('MANAGER'),
+  role('BOSS', 'MANAGER'),
   fileController.deleteFile
 );
 

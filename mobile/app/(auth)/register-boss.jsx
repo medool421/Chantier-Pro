@@ -1,17 +1,19 @@
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   Alert,
   ScrollView,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
 import { colors } from '../../src/theme/colors';
+import ThemedTextInput from '../../src/components/ThemedTextInput';
 
 export default function RegisterBoss() {
   const registerBoss = useAuthStore((s) => s.registerBoss);
@@ -44,26 +46,27 @@ export default function RegisterBoss() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardContainer}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Image source={require('../../src/assets/ChantierPro.png')} style={styles.image} />
       <Text style={styles.title}>Créer votre entreprise</Text>
       <Text style={styles.subtitle}>Accès Administrateur · Boss</Text>
 
       <Text style={styles.sectionLabel}>INFORMATIONS PERSONNELLES</Text>
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Prénom"
         value={firstName}
         onChangeText={setFirstName}
         style={styles.input}
       />
-      <TextInput
+      <ThemedTextInput
         placeholder="Nom"
         value={lastName}
         onChangeText={setLastName}
         style={styles.input}
       />
-      <TextInput
+      <ThemedTextInput
         placeholder="Email professionnel"
         autoCapitalize="none"
         keyboardType="email-address"
@@ -71,7 +74,7 @@ export default function RegisterBoss() {
         onChangeText={setEmail}
         style={styles.input}
       />
-      <TextInput
+      <ThemedTextInput
         placeholder="Mot de passe"
         secureTextEntry
         value={password}
@@ -81,7 +84,7 @@ export default function RegisterBoss() {
 
       <Text style={styles.sectionLabel}>VOTRE ENTREPRISE</Text>
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Nom de l'entreprise"
         value={companyName}
         onChangeText={setCompanyName}
@@ -101,16 +104,19 @@ export default function RegisterBoss() {
       <Pressable onPress={() => router.replace('/(auth)/login')}>
         <Text style={styles.link}>J'ai déjà un compte</Text>
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: { flex: 1, backgroundColor: colors.backgroundLight },
   container: {
     flexGrow: 1,
     backgroundColor: colors.backgroundLight,
     padding: 24,
     justifyContent: 'center',
+    paddingBottom: 48,
   },
   image: {
     width: 80,

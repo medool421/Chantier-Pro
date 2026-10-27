@@ -20,7 +20,7 @@ async function sendNotification({ userId, title, body, type, data = {} }) {
       attributes: ['expoPushToken'],
     });
 
-    if (user?.expoPushToken && Expo.isExpoPushToken(user.expoPushToken)) {
+    if (user && user.expoPushToken && Expo.isExpoPushToken(user.expoPushToken)) {
       const chunks = expo.chunkPushNotifications([{
         to: user.expoPushToken,
         sound: 'default',
@@ -49,18 +49,20 @@ async function sendNotification({ userId, title, body, type, data = {} }) {
 function notifyTaskAssigned({ assigneeId, taskTitle, projectName, taskId, projectId }) {
   return sendNotification({
     userId: assigneeId,
-    title: '📋 Nouvelle tâche assignée',
-    body: `"${taskTitle}" sur le projet ${projectName}`,
+    title: 'Nouvelle tâche assignée',
+    body: `Vous avez été assigné à la tâche "${taskTitle}" dans le projet "${projectName}".`,
     type: NOTIFICATION_TYPES.TASK_ASSIGNED,
     data: { taskId, projectId },
   });
 }
 
-function notifyTaskStatusChanged({ managerId, taskTitle, newStatus, taskId, projectId }) {
+function notifyTaskStatusChanged({ managerId, workerFirstName, workerLastName, taskTitle, updateType, taskId, projectId }) {
+  const isBlocked = updateType === 'BLOCKED';
+
   return sendNotification({
     userId: managerId,
-    title: '🔄 Statut de tâche mis à jour',
-    body: `"${taskTitle}" est maintenant: ${newStatus}`,
+    title: isBlocked ? 'Tâche bloquée !' : 'Tâche terminée !',
+    body: `${workerFirstName} ${workerLastName} a ${isBlocked ? 'signalé un problème sur' : 'terminé'} la tâche "${taskTitle}".`,
     type: NOTIFICATION_TYPES.TASK_STATUS_CHANGED,
     data: { taskId, projectId },
   });

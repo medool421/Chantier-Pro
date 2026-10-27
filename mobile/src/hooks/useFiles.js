@@ -12,7 +12,7 @@ export const useProjectFiles = (projectId) =>
 
 export const useUploadFile = (projectId) =>
   useMutation({
-    mutationFn: filesService.upload,
+    mutationFn: ({ formData, onUploadProgress }) => filesService.upload(formData, onUploadProgress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.files.byProject(projectId) });
     },

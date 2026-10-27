@@ -3,6 +3,18 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { uploadDir } = require('../utils/fileStorage');
+const { assertIsolatedTestUploadDirectory } = require('../utils/storagePathSafety');
+
+if (process.env.NODE_ENV === 'test') {
+  const configuredStorage = process.env.FILE_STORAGE_DIR;
+  if (!configuredStorage) {
+    throw new Error('Test uploads require an isolated FILE_STORAGE_DIR');
+  }
+  assertIsolatedTestUploadDirectory(
+    uploadDir,
+    path.resolve(__dirname, '../../uploads')
+  );
+}
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });

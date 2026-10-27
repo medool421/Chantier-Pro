@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
-  TouchableOpacity, ActivityIndicator, Alert, TextInput,
+  TouchableOpacity, ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../src/theme/colors';
+import ThemedTextInput from '../../../src/components/ThemedTextInput';
 import { useProjectManagers, useAssignManager } from '../../../src/hooks/useProjects';
 
 export default function AssignManager() {
@@ -76,7 +77,7 @@ export default function AssignManager() {
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color={colors.textMuted} />
-        <TextInput
+        <ThemedTextInput
           style={styles.searchInput}
           placeholder="Rechercher par nom ou email..."
           value={searchQuery}

@@ -6,8 +6,10 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "cross-env NODE_ENV=test jest --runInBand",
-    "test:watch": "jest --watch",
+    "test": "cross-env NODE_ENV=test jest --config jest.config.json --runInBand --forceExit",
+    "test:storage": "cross-env NODE_ENV=test jest --config jest.storage.config.json --runInBand --forceExit",
+    "test:safety": "cross-env NODE_ENV=test jest --config jest.safety.config.json --runInBand --forceExit",
+    "test:watch": "cross-env NODE_ENV=test jest --config jest.config.json --watch",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "migrate": "node src/database/migrate.js up",
@@ -20,16 +22,17 @@
   "jest": {
     "testEnvironment": "./src/tests/jestEnvironment.js",
     "rootDir": ".",
-    "testMatch": [
-      "<rootDir>/src/tests/**/*.test.js"
+    "testRegex": "[/\\\\]src[/\\\\]tests[/\\\\].*\\.test\\.js$",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "[/\\\\]src[/\\\\]tests[/\\\\]safety[/\\\\]",
+      "[/\\\\]src[/\\\\]tests[/\\\\]integration[/\\\\]file-storage\\.test\\.js$"
     ],
     "setupTestFrameworkScriptFile": "<rootDir>/src/tests/setup.js",
     "transform": {},
     "moduleNameMapper": {
       "^expo-server-sdk$": "<rootDir>/src/tests/mocks/expo-server-sdk.js"
-    },
-    "clearMocks": true,
-    "forceExit": true
+    }
   },
   "keywords": [
     "construction",

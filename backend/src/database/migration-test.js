@@ -1,8 +1,8 @@
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { getMigrationFiles, migrateDown, migrateUp, migrationStatus } = require('./migrate');
+const { verifyDestructiveTestDatabase } = require('../tests/testSafety');
 
-const TEST_DATABASE_NAME = 'chantierpro_test';
 const legacyFileId = '11111111-1111-4111-8111-111111111111';
 
 function assert(condition, message) {
@@ -139,13 +139,9 @@ async function assertFinalSchema() {
 
 async function main() {
   assert(process.env.NODE_ENV === 'test', 'Migration tests require NODE_ENV=test');
-  assert(
-    process.env.DB_NAME === TEST_DATABASE_NAME,
-    `Refusing destructive migration test outside ${TEST_DATABASE_NAME}`
-  );
+  await verifyDestructiveTestDatabase(sequelize);
 
   try {
-    await sequelize.authenticate();
     require('../models');
     await sequelize.query('DROP TABLE IF EXISTS "schema_migrations" CASCADE');
     await sequelize.sync({ force: true });
@@ -180,7 +176,7 @@ async function main() {
   } finally {
     await sequelize.drop({ cascade: true });
     await sequelize.close();
-    console.log(`Dropped disposable database schema for ${TEST_DATABASE_NAME}.`);
+    console.log('Dropped verified disposable database schema.');
   }
 }
 

@@ -23,7 +23,7 @@ async function getTeamById(id, user) {
                 model: TeamMember,
                 as: 'members',
 
-                include: [{ model: User, as: 'user', attributes: ['id', 'firstName', 'lastName', 'email', 'role'] }]
+                include: [{ model: User, as: 'user', attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'status', 'isActive'] }]
             },
             {
                 model: Project,
@@ -120,7 +120,7 @@ async function getProjectTeam(projectId, user) {
           {
             model: User,
             as: 'user', 
-            attributes: ['id', 'firstName', 'lastName', 'email', 'role'],
+            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'status', 'isActive'],
           },
         ],
       },

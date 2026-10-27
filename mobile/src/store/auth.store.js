@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import api from '../api/axios';
 import { registerPushToken } from '../utils/registerPushToken';
+import { queryClient } from '../utils/queryClient';
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -88,6 +89,7 @@ export const useAuthStore = create((set) => ({
   logout: async () => {
     await SecureStore.deleteItemAsync('accessToken');
     set({ user: null, isAuthenticated: false });
+    queryClient.clear();
   },
 }));
 

@@ -1,20 +1,37 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, Image,
+  ActivityIndicator, Alert, Modal, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
+import ThemedTextInput from '../../../../../src/components/ThemedTextInput';
 import { TASK_STATUS, TASK_STATUS_LABELS, TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import { useTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../../../../../src/hooks/useTasks';
 import { useTaskUpdates } from '../../../../../src/hooks/useTaskUpdates';
 import { useProjectTeam } from '../../../../../src/hooks/useProjects';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import api from '../../../../../src/api/axios';
+import { filesService } from '../../../../../src/api/files.service';
+import ImagePreviewModal from '../../../../../src/components/ImagePreviewModal';
+
+function getMemberUserId(member) {
+  return member?.userId ?? member?.user?.id ?? null;
+}
+
+function getTaskAssigneeIds(task) {
+  const ids = (task?.assignees || []).map((worker) => String(worker.id));
+  if (ids.length) return ids;
+  const legacyId = task?.assignedTo ?? task?.assigneeId ?? task?.assignee?.id;
+  return legacyId == null ? [] : [String(legacyId)];
+}
 
 export default function ManagerTaskDetail() {
   const { id } = useLocalSearchParams();
   const taskId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [assigneeModalVisible, setAssigneeModalVisible] = useState(false);
@@ -31,7 +48,9 @@ export default function ManagerTaskDetail() {
     refetch: refetchUpdates,
   } = useTaskUpdates(taskId);
   const { data: teamData } = useProjectTeam(task?.projectId);
-  const assignees = teamData?.members || [];
+  const assignees = (teamData?.members || []).filter((member) =>
+    member.user?.role === 'WORKER' && member.user.status === 'ACTIVE' && member.user.isActive !== false
+  );
   const filteredAssignees = assignees.filter((m) => {
     const u = m.user;
     if (!u) return false;
@@ -43,8 +62,8 @@ export default function ManagerTaskDetail() {
   });
 
   useEffect(() => {
-    if (task) setEditForm(task);
-  }, [task?.id]);
+    if (task) setEditForm({ ...task, assigneeIds: getTaskAssigneeIds(task) });
+  }, [task?.id, task?.assignedTo, task?.assignee?.id, task?.assignees]);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,7 +93,7 @@ export default function ManagerTaskDetail() {
         description: editForm.description,
         priority: editForm.priority,
         dueDate: editForm.dueDate,
-        assigneeId: editForm.assigneeId,
+        assigneeIds: editForm.assigneeIds || [],
       },
       {
         onSuccess: () => {
@@ -86,12 +105,7 @@ export default function ManagerTaskDetail() {
     );
   };
 
-  const getSelectedAssigneeLabel = () => {
-    if (!editForm.assigneeId) return 'Non assigné';
-    const selected = assignees.find((m) => m.userId === editForm.assigneeId);
-    if (!selected?.user) return 'Non assigné';
-    return `${selected.user.firstName} ${selected.user.lastName}`;
-  };
+  const selectedAssigneeIds = editForm.assigneeIds || [];
 
   const handleDeleteTask = () => {
     Alert.alert(
@@ -166,19 +180,12 @@ export default function ManagerTaskDetail() {
             </View>
           )}
 
-          {task.assignee && (
+          {task.assignees?.length > 0 ? (
             <View style={styles.assigneeCard}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {task.assignee.firstName?.[0]}{task.assignee.lastName?.[0]}
-                </Text>
-              </View>
-              <View>
-                <Text style={styles.assigneeName}>{task.assignee.firstName} {task.assignee.lastName}</Text>
-                <Text style={styles.assigneeRole}>Assigné à</Text>
-              </View>
+              <Text style={styles.assigneeRole}>Ouvriers assignés</Text>
+              <View style={styles.assigneeChips}>{task.assignees.map((worker) => <WorkerBadge key={worker.id} worker={worker} />)}</View>
             </View>
-          )}
+          ) : task.assignee ? <View style={styles.assigneeCard}><Text style={styles.assigneeRole}>Ouvriers assignés</Text><View style={styles.assigneeChips}><WorkerBadge worker={task.assignee} /></View></View> : <Text style={styles.emptyAssigneeText}>Aucun ouvrier assigné</Text>}
         </View>
 
         <View style={styles.section}>
@@ -246,18 +253,19 @@ export default function ManagerTaskDetail() {
       {/* EDIT MODAL */}
       <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboard}>
+            <View style={[styles.modalContent, { paddingBottom: insets.bottom }]}>
+              <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               <Text style={styles.modalTitle}>Modifier la tâche</Text>
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Titre</Text>
-                <TextInput style={styles.input} value={editForm.title} onChangeText={(t) => setEditForm({ ...editForm, title: t })} />
+                <ThemedTextInput style={styles.input} value={editForm.title} onChangeText={(t) => setEditForm({ ...editForm, title: t })} />
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Description</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={editForm.description} onChangeText={(t) => setEditForm({ ...editForm, description: t })} multiline />
+                <ThemedTextInput style={[styles.input, styles.textArea]} value={editForm.description} onChangeText={(t) => setEditForm({ ...editForm, description: t })} multiline />
               </View>
 
               <View style={styles.formGroup}>
@@ -288,19 +296,17 @@ export default function ManagerTaskDetail() {
                 >
                   <View style={styles.selectorInfo}>
                     <View style={styles.avatarSelector}>
-                      {editForm.assigneeId ? (
-                        <Text style={styles.avatarSelectorText}>
-                          {assignees.find((m) => m.userId === editForm.assigneeId)?.user?.firstName?.[0]}
-                          {assignees.find((m) => m.userId === editForm.assigneeId)?.user?.lastName?.[0]}
-                        </Text>
-                      ) : (
-                        <Ionicons name="person-outline" size={20} color={colors.primary} />
-                      )}
+                      <Ionicons name="people-outline" size={20} color={colors.primary} />
                     </View>
-                    <Text style={styles.selectorText}>{getSelectedAssigneeLabel()}</Text>
+                    <Text style={styles.selectorText}>{selectedAssigneeIds.length ? `${selectedAssigneeIds.length} ouvrier(s) sélectionné(s)` : 'Aucun ouvrier assigné'}</Text>
                   </View>
                   <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
+                <View style={styles.assigneeChips}>{selectedAssigneeIds.map((workerId) => {
+                  const worker = assignees.find((member) => String(getMemberUserId(member)) === String(workerId))?.user
+                    || task.assignees?.find((member) => String(member.id) === String(workerId));
+                  return worker ? <WorkerBadge key={workerId} worker={worker} /> : null;
+                })}</View>
               </View>
 
               <View style={styles.buttonRow}>
@@ -317,8 +323,9 @@ export default function ManagerTaskDetail() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          </View>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -335,7 +342,7 @@ export default function ManagerTaskDetail() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Choisir un ouvrier</Text>
+              <Text style={styles.modalTitle}>Choisir les ouvriers</Text>
               <TouchableOpacity
                 onPress={() => {
                   setAssigneeModalVisible(false);
@@ -348,7 +355,7 @@ export default function ManagerTaskDetail() {
 
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={20} color={colors.textMuted} />
-              <TextInput
+              <ThemedTextInput
                 style={styles.searchInput}
                 placeholder="Rechercher..."
                 value={assigneeSearchQuery}
@@ -362,20 +369,16 @@ export default function ManagerTaskDetail() {
             </View>
 
             <TouchableOpacity
-              style={[styles.workerModalItem, !editForm.assigneeId && styles.workerModalItemSelected]}
-              onPress={() => {
-                setEditForm({ ...editForm, assigneeId: null });
-                setAssigneeModalVisible(false);
-                setAssigneeSearchQuery('');
-              }}
+              style={[styles.workerModalItem, selectedAssigneeIds.length === 0 && styles.workerModalItemSelected]}
+              onPress={() => setEditForm({ ...editForm, assigneeIds: [] })}
             >
               <View style={styles.avatarSmall}>
-                <Ionicons name="person-remove-outline" size={18} color={!editForm.assigneeId ? '#fff' : colors.primary} />
+                <Ionicons name="person-remove-outline" size={18} color={selectedAssigneeIds.length === 0 ? '#fff' : colors.primary} />
               </View>
-              <Text style={[styles.workerName, !editForm.assigneeId && styles.selectedTextColor]}>
-                Non assigné
+              <Text style={[styles.workerName, selectedAssigneeIds.length === 0 && styles.selectedTextColor]}>
+                Aucun ouvrier assigné
               </Text>
-              {!editForm.assigneeId && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+              {selectedAssigneeIds.length === 0 && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
             </TouchableOpacity>
 
             <ScrollView style={{ maxHeight: 320 }}>
@@ -385,20 +388,20 @@ export default function ManagerTaskDetail() {
                 return (
                   <TouchableOpacity
                     key={m.userId}
-                    style={[styles.workerModalItem, editForm.assigneeId === m.userId && styles.workerModalItemSelected]}
+                    style={[styles.workerModalItem, selectedAssigneeIds.includes(String(getMemberUserId(m))) && styles.workerModalItemSelected]}
                     onPress={() => {
-                      setEditForm({ ...editForm, assigneeId: m.userId });
-                      setAssigneeModalVisible(false);
-                      setAssigneeSearchQuery('');
+                      const memberId = String(getMemberUserId(m));
+                      const selected = selectedAssigneeIds.includes(memberId);
+                      setEditForm({ ...editForm, assigneeIds: selected ? selectedAssigneeIds.filter((id) => id !== memberId) : [...selectedAssigneeIds, memberId] });
                     }}
                   >
                     <View style={styles.avatarSmall}>
                       <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
                     </View>
-                    <Text style={[styles.workerName, editForm.assigneeId === m.userId && styles.selectedTextColor]}>
+                    <Text style={[styles.workerName, selectedAssigneeIds.includes(String(getMemberUserId(m))) && styles.selectedTextColor]}>
                       {u.firstName} {u.lastName}
                     </Text>
-                    {editForm.assigneeId === m.userId && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+                    {selectedAssigneeIds.includes(String(getMemberUserId(m))) && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
                   </TouchableOpacity>
                 );
               })}
@@ -445,19 +448,58 @@ function TaskUpdateCard({ update }) {
       </View>
 
       {!!message && <Text style={styles.updateMessage}>{message}</Text>}
-      {!!update.imageUrl && <TaskUpdateImage uri={update.imageUrl} />}
+      {!!update.imageUrl && <TaskUpdateImage update={update} />}
     </View>
   );
 }
 
-function TaskUpdateImage({ uri }) {
+function WorkerBadge({ worker }) {
+  const initials = `${worker.firstName?.[0] || ''}${worker.lastName?.[0] || ''}`.toUpperCase();
+  return (
+    <View style={styles.assigneeBadge}>
+      <View style={styles.assigneeAvatar}><Text style={styles.assigneeAvatarText}>{initials}</Text></View>
+      <Text style={styles.assigneeName}>{worker.firstName} {worker.lastName}</Text>
+    </View>
+  );
+}
+
+function TaskUpdateImage({ update }) {
+  const { imageUrl: uri, id } = update;
   const [imageFailed, setImageFailed] = useState(false);
+  const [displayUri, setDisplayUri] = useState('');
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const isLocalPhoto = uri.startsWith('/uploads/');
+  const mimeType = /\.png$/i.test(uri) ? 'image/png' : 'image/jpeg';
+  const downloadUrl = isLocalPhoto
+    ? api.getUri({ url: `/task-updates/${id}/photo` })
+    : undefined;
 
   useEffect(() => {
+    let active = true;
     setImageFailed(false);
-  }, [uri]);
+    setDisplayUri('');
 
-  if (!/^https?:\/\//i.test(uri) || imageFailed) {
+    if (!isLocalPhoto) {
+      setDisplayUri(uri);
+      return () => { active = false; };
+    }
+
+    filesService.downloadToCache({
+      downloadUrl,
+      originalName: `task-update-${id}${mimeType === 'image/png' ? '.png' : '.jpg'}`,
+      mimeType,
+    })
+      .then((localUri) => {
+        if (active) setDisplayUri(localUri);
+      })
+      .catch(() => {
+        if (active) setImageFailed(true);
+      });
+
+    return () => { active = false; };
+  }, [downloadUrl, id, isLocalPhoto, mimeType, uri]);
+
+  if (imageFailed || (!isLocalPhoto && !/^https?:\/\//i.test(uri))) {
     return (
       <View style={styles.imageFallback}>
         <Ionicons name="image-outline" size={28} color={colors.textMuted} />
@@ -467,13 +509,33 @@ function TaskUpdateImage({ uri }) {
   }
 
   return (
-    <Image
-      source={{ uri }}
-      style={styles.updateImage}
-      resizeMode="cover"
-      onError={() => setImageFailed(true)}
-      accessibilityLabel="Photo de la mise à jour"
-    />
+    <>
+      {displayUri ? (
+        <TouchableOpacity onPress={() => setPreviewVisible(true)} accessibilityRole="button">
+          <Image
+            source={{ uri: displayUri }}
+            style={styles.updateImage}
+            resizeMode="cover"
+            onError={() => setImageFailed(true)}
+            accessibilityLabel="Ouvrir la photo de la mise à jour"
+          />
+        </TouchableOpacity>
+      ) : (
+        <View style={[styles.updateImage, styles.imageLoading]}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      )}
+      <ImagePreviewModal
+        visible={previewVisible}
+        file={{
+          originalName: `Photo de mise à jour ${id}`,
+          mimeType: isLocalPhoto ? mimeType : 'application/octet-stream',
+          downloadUrl,
+        }}
+        uri={displayUri}
+        onClose={() => setPreviewVisible(false)}
+      />
+    </>
   );
 }
 
@@ -503,6 +565,7 @@ const styles = StyleSheet.create({
   authorText: { color: colors.textMuted, fontSize: 13, marginLeft: 6 },
   updateMessage: { color: colors.textDark, fontSize: 14, lineHeight: 20, marginBottom: 10 },
   updateImage: { width: '100%', height: 180, borderRadius: 10, backgroundColor: '#F2F2F2' },
+  imageLoading: { justifyContent: 'center', alignItems: 'center' },
   imageFallback: { height: 100, borderRadius: 10, backgroundColor: '#F2F2F2', justifyContent: 'center', alignItems: 'center' },
   imageFallbackText: { color: colors.textMuted, fontSize: 13, marginTop: 6 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
@@ -515,7 +578,13 @@ const styles = StyleSheet.create({
   description: { fontSize: 14, color: colors.textDark, lineHeight: 20, marginBottom: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   infoText: { marginLeft: 8, color: colors.textMuted, fontSize: 14 },
-  assigneeCard: { flexDirection: 'row', alignItems: 'center', marginTop: 16, padding: 12, backgroundColor: colors.backgroundLight, borderRadius: 12 },
+  assigneeCard: { marginTop: 16, padding: 12, backgroundColor: colors.backgroundLight, borderRadius: 12 },
+  assigneeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  assigneeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, paddingRight: 10, borderWidth: 1, borderColor: '#E9E9E9' },
+  assigneeAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 7 },
+  assigneeAvatarText: { fontSize: 10, fontWeight: '700', color: colors.primary },
+  assigneeName: { color: colors.textDark, fontSize: 13, fontWeight: '500' },
+  emptyAssigneeText: { color: colors.textMuted, fontStyle: 'italic', marginTop: 16 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   avatarText: { fontSize: 18, fontWeight: 'bold', color: colors.primary },
   assigneeName: { fontSize: 16, fontWeight: '600', color: colors.textDark },
@@ -523,6 +592,7 @@ const styles = StyleSheet.create({
   deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.error },
   deleteButtonText: { color: colors.error, fontWeight: '600', marginLeft: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalKeyboard: { width: '100%', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark, marginBottom: 20 },
   statusOption: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8, backgroundColor: '#F5F5F5' },

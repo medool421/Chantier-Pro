@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, RefreshControl,
+  ActivityIndicator, Alert, Modal, RefreshControl, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../../../src/theme/colors';
+import ThemedTextInput from '../../../src/components/ThemedTextInput';
 import { PROJECT_STATUS, PROJECT_STATUS_LABELS } from '../../../src/utils/constants';
 import {
   useProject,
@@ -14,6 +16,23 @@ import {
   useDeleteProject,
 } from '../../../src/hooks/useProjects';
 
+function parseDateValue(value) {
+  if (!value) return new Date();
+
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return new Date();
+
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function formatDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function ProjectDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -21,6 +40,7 @@ export default function ProjectDetails() {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [activeDatePicker, setActiveDatePicker] = useState(null);
 
   // ─── Queries ───────────────────────────────────────────────────────────────
   const { data: project, isLoading, isRefetching, refetch } = useProject(id);
@@ -52,7 +72,7 @@ export default function ProjectDetails() {
         name: editForm.name,
         description: editForm.description,
         address: editForm.address,
-        budget: editForm.budget,
+        budget: editForm.budget === '' || editForm.budget == null ? null : Number(editForm.budget),
         startDate: editForm.startDate,
         endDate: editForm.endDate,
       },
@@ -158,14 +178,12 @@ export default function ProjectDetails() {
             <Text style={styles.infoText}>{project.address || 'N/A'}</Text>
           </View>
 
-          {project.budget && (
-            <View style={styles.infoRow}>
-              <Ionicons name="cash-outline" size={18} color={colors.textMuted} />
-              <Text style={styles.infoText}>
-                Budget: {project.budget.toLocaleString('fr-MA')} DH
-              </Text>
-            </View>
-          )}
+          <View style={styles.infoRow}>
+            <Ionicons name="cash-outline" size={18} color={colors.textMuted} />
+            <Text style={styles.infoText}>
+              Budget: {project.budget != null && project.budget !== '' ? `${Number(project.budget).toLocaleString('fr-MA')} DH` : 'Non défini'}
+            </Text>
+          </View>
 
           <View style={styles.progressContainer}>
             <Text style={styles.progressLabel}>Progression</Text>
@@ -322,13 +340,14 @@ export default function ProjectDetails() {
         onRequestClose={() => setEditModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboard}>
+            <View style={styles.modalContent}>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               <Text style={styles.modalTitle}>Modifier le projet</Text>
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Nom</Text>
-                <TextInput
+                <ThemedTextInput
                   style={styles.input}
                   value={editForm.name}
                   onChangeText={(t) => setEditForm({ ...editForm, name: t })}
@@ -337,7 +356,7 @@ export default function ProjectDetails() {
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Description</Text>
-                <TextInput
+                <ThemedTextInput
                   style={[styles.input, styles.textArea]}
                   value={editForm.description}
                   onChangeText={(t) => setEditForm({ ...editForm, description: t })}
@@ -348,7 +367,7 @@ export default function ProjectDetails() {
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Adresse</Text>
-                <TextInput
+                <ThemedTextInput
                   style={styles.input}
                   value={editForm.address}
                   onChangeText={(t) => setEditForm({ ...editForm, address: t })}
@@ -357,12 +376,64 @@ export default function ProjectDetails() {
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Budget (DH)</Text>
-                <TextInput
+                <ThemedTextInput
                   style={styles.input}
-                  value={editForm.budget?.toString()}
-                  onChangeText={(t) => setEditForm({ ...editForm, budget: parseFloat(t) || 0 })}
-                  keyboardType="numeric"
+                  value={editForm.budget == null ? '' : String(editForm.budget)}
+                  onChangeText={(value) => setEditForm({ ...editForm, budget: value })}
+                  keyboardType="decimal-pad"
+                  placeholder="ex: 250000"
                 />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Date de début</Text>
+                <TouchableOpacity style={styles.input} onPress={() => setActiveDatePicker('startDate')}>
+                  <Text>{editForm.startDate || 'Choisir une date'}</Text>
+                </TouchableOpacity>
+                {activeDatePicker === 'startDate' && (
+                  <DateTimePicker
+                    value={parseDateValue(editForm.startDate)}
+                    mode="date"
+                    display={Platform.OS === 'android' ? 'calendar' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      setActiveDatePicker(null);
+                      if (event.type === 'set' && selectedDate) {
+                        const startDate = formatDateValue(selectedDate);
+                        setEditForm({
+                          ...editForm,
+                          startDate,
+                          endDate: editForm.endDate && editForm.endDate < startDate ? null : editForm.endDate,
+                        });
+                      }
+                    }}
+                  />
+                )}
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Date de fin (facultative)</Text>
+                <TouchableOpacity style={styles.input} onPress={() => setActiveDatePicker('endDate')}>
+                  <Text>{editForm.endDate || 'Choisir une date'}</Text>
+                </TouchableOpacity>
+                {editForm.endDate ? (
+                  <TouchableOpacity onPress={() => setEditForm({ ...editForm, endDate: null })} style={styles.clearDateButton}>
+                    <Text style={styles.datePlaceholder}>Effacer la date de fin</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {activeDatePicker === 'endDate' && (
+                  <DateTimePicker
+                    value={parseDateValue(editForm.endDate || editForm.startDate)}
+                    mode="date"
+                    display={Platform.OS === 'android' ? 'calendar' : 'default'}
+                    minimumDate={editForm.startDate ? parseDateValue(editForm.startDate) : undefined}
+                    onChange={(event, selectedDate) => {
+                      setActiveDatePicker(null);
+                      if (event.type === 'set' && selectedDate) {
+                        setEditForm({ ...editForm, endDate: formatDateValue(selectedDate) });
+                      }
+                    }}
+                  />
+                )}
               </View>
 
               <View style={styles.buttonRow}>
@@ -384,7 +455,8 @@ export default function ProjectDetails() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -436,6 +508,7 @@ const styles = StyleSheet.create({
   deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.error, marginBottom: 40 },
   deleteButtonText: { color: colors.error, fontWeight: '600', marginLeft: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalKeyboard: { width: '100%', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark, marginBottom: 20 },
   statusOption: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8, backgroundColor: '#F5F5F5' },
@@ -445,6 +518,7 @@ const styles = StyleSheet.create({
   modalCancelButton: { paddingHorizontal: 26, paddingVertical: 6, alignItems: 'center', marginTop: 12 },
   modalCancelText: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
   formGroup: { marginBottom: 16 },
+  clearDateButton: { alignSelf: 'flex-start', paddingTop: 8 },
   label: { fontSize: 14, fontWeight: '600', color: colors.textDark, marginBottom: 8 },
   input: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, padding: 12, fontSize: 16 },
   textArea: { minHeight: 80, textAlignVertical: 'top' },

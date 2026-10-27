@@ -14,7 +14,8 @@ export const QUERY_KEYS = {
   tasks: {
     byProject: (projectId) => ['tasks', 'project', projectId],
     detail: (id) => ['tasks', id],
-    mine: ['tasks', 'mine'], // Worker: tasks assigned to current user
+    mine: ['tasks', 'mine'], // Prefix for tasks assigned to workers
+    mineForUser: (userId) => ['tasks', 'mine', userId],
   },
 
   taskUpdates: {

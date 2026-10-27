@@ -24,7 +24,9 @@ export default function ManagerTasksList() {
   const getFilteredTasks = () =>
     filter === 'ALL' ? tasks : tasks.filter((t) => t.status === filter);
 
-  const renderTaskItem = ({ item }) => (
+  const renderTaskItem = ({ item }) => {
+    const assignedWorkers = item.assignees?.length ? item.assignees : (item.assignee ? [item.assignee] : []);
+    return (
     <TouchableOpacity
       style={styles.taskCard}
       onPress={() =>
@@ -51,16 +53,16 @@ export default function ManagerTasksList() {
           <Text style={styles.statusText}>{TASK_STATUS_LABELS[item.status] || 'À faire'}</Text>
         </View>
 
-        {item.assignee && (
-          <View style={styles.assigneeContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {item.assignee.firstName?.[0]}{item.assignee.lastName?.[0]}
-              </Text>
-            </View>
-            <Text style={styles.assigneeName} numberOfLines={1}>
-              {item.assignee.firstName} {item.assignee.lastName}
-            </Text>
+        {assignedWorkers.length > 0 && (
+          <View style={styles.assigneeList}>
+            {assignedWorkers.map((worker) => (
+              <View key={worker.id} style={styles.assigneeBadge}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{worker.firstName?.[0]}{worker.lastName?.[0]}</Text>
+                </View>
+                <Text style={styles.assigneeName} numberOfLines={1}>{worker.firstName} {worker.lastName}</Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -74,7 +76,8 @@ export default function ManagerTasksList() {
         )}
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -153,10 +156,11 @@ const styles = StyleSheet.create({
   taskFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 11, fontWeight: '600', color: colors.textDark },
-  assigneeContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  assigneeList: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, flex: 1 },
+  assigneeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', paddingRight: 8, borderRadius: 16, maxWidth: '100%' },
   avatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 6 },
   avatarText: { fontSize: 10, fontWeight: 'bold', color: colors.primary },
-  assigneeName: { fontSize: 12, color: colors.textMuted, flex: 1 },
+  assigneeName: { fontSize: 12, color: colors.textMuted },
   dueDateContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dueDateText: { fontSize: 12, color: colors.textMuted },
   overdueText: { color: colors.error, fontWeight: '600' },

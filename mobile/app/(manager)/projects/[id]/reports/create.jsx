@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet,
+  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
+import ThemedTextInput from '../../../../../src/components/ThemedTextInput';
 import { useCreateReport } from '../../../../../src/hooks/useReports';
 
 const REPORT_TYPES = [
@@ -48,8 +49,8 @@ export default function CreateReport() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Text style={styles.titleText}>Nouveau Rapport</Text>
 
         <View style={styles.sectionHeader}>
@@ -88,7 +89,7 @@ export default function CreateReport() {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Titre du rapport</Text>
-          <TextInput
+          <ThemedTextInput
             style={styles.input}
             placeholder="Ex: Avancement gros œuvre - Secteur A"
             value={form.title}
@@ -100,7 +101,7 @@ export default function CreateReport() {
           <Text style={styles.label}>Date du rapport</Text>
           <View style={styles.datePickerContainer}>
             <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
-            <TextInput
+            <ThemedTextInput
               style={styles.dateInput}
               value={form.reportDate}
               onChangeText={(t) => setForm({ ...form, reportDate: t })}
@@ -112,7 +113,7 @@ export default function CreateReport() {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Contenu / Détails</Text>
-          <TextInput
+          <ThemedTextInput
             style={[styles.input, styles.textArea]}
             placeholder="Décrivez les travaux effectués, les problèmes rencontrés, etc."
             multiline
@@ -137,13 +138,13 @@ export default function CreateReport() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { padding: 24 },
+  scrollContent: { padding: 24, paddingBottom: 48 },
   titleText: { fontSize: 24, fontWeight: '800', color: colors.textDark, marginBottom: 24 },
   sectionHeader: { marginBottom: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textDark },

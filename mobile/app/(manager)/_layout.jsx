@@ -69,6 +69,20 @@ export default function ManagerLayout() {
           title: 'Fichiers du Projet',
         }}
       />
+
+      <Stack.Screen
+        name="projects/[id]/reports/index"
+        options={{
+          title: 'Rapports du Projet',
+        }}
+      />
+
+      <Stack.Screen
+        name="projects/[id]/reports/create"
+        options={{
+          title: 'Nouveau Rapport',
+        }}
+      />
     </Stack>
   );
 }
