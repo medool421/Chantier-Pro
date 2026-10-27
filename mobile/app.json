@@ -6,7 +6,7 @@
     "scheme": "chantierpro",
     "orientation": "portrait",
     "icon": "./src/assets/ChantierPro.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./src/assets/ChantierPro.png",
       "resizeMode": "contain",
@@ -19,6 +19,7 @@
       "supportsTablet": true
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/ChantierPro.png",
         "backgroundColor": "#ffffff"

@@ -27,10 +27,16 @@ router.use(auth);
 
 router.post(
   '/task-updates',
-  role('WORKER', 'MANAGER'),
+  role('WORKER'),
   upload.single('image'),
   validate(createTaskUpdateSchema),
   taskUpdateController.createUpdate
+);
+
+router.get(
+  '/task-updates/:updateId/photo',
+  role('BOSS', 'MANAGER', 'WORKER'),
+  taskUpdateController.getUpdatePhoto
 );
 
 router.get(

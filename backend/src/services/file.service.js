@@ -62,22 +62,30 @@ async function getFileRecord(id, user) {
 }
 
 async function uploadFile(data, file, user) {
+  if (!user || !['BOSS', 'MANAGER', 'WORKER'].includes(user.role)) {
+    throw new AppError('Forbidden: insufficient permissions', 403);
+  }
+
+  if (user.role === 'WORKER' && !data.taskId) {
+    throw new AppError('Workers can only upload files to assigned tasks', 403);
+  }
+
+  if (user.role !== 'WORKER' && data.taskId) {
+    throw new AppError('Shared project files cannot be attached to a task', 400);
+  }
+
   if (!file) {
     throw new AppError('File is required', 400);
   }
 
   try {
-    await validateFileContent(file);
+    const detectedMimeType = await validateFileContent(file);
 
     const project = await Project.findByPk(data.projectId);
     if (!project) throw new AppError('Project not found', 404);
 
     // Workers may upload only to an assigned task in their company.
     assertProjectAccess(project, user);
-
-    if (user.role === 'WORKER' && !data.taskId) {
-      throw new AppError('Workers can only upload files to assigned tasks', 403);
-    }
 
     if (data.taskId) {
       const task = await Task.findOne({
@@ -92,7 +100,10 @@ async function uploadFile(data, file, user) {
     const createdFile = await File.create({
       url: `/uploads/${file.filename}`,
       originalName: file.originalname,
-      mimeType: file.mimetype,
+      // Persist the verified MIME type so authenticated downloads advertise
+      // the actual content type even when Android sends image/jpg or a
+      // gallery URI with incomplete metadata.
+      mimeType: detectedMimeType,
       size: file.size,
       type: data.type,
       projectId: data.projectId,
@@ -144,7 +155,15 @@ async function getFileDownload(id, user) {
 }
 
 async function deleteFile(id, user) {
+  if (!user || !['BOSS', 'MANAGER'].includes(user.role)) {
+    throw new AppError('Forbidden: insufficient permissions', 403);
+  }
+
   const file = await getFileRecord(id, user);
+
+  if (file.taskId) {
+    throw new AppError('Task evidence cannot be deleted as a shared project file', 403);
+  }
 
   const filePath = resolveStoredPath(file.url);
   if (!filePath) {

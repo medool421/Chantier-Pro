@@ -52,7 +52,10 @@ exports.downloadFile = catchAsync(async (req, res, next) => {
     req.user
   );
 
-  res.download(filePath, file.originalName, { dotfiles: 'deny' }, (error) => {
+  res.download(filePath, file.originalName, {
+    dotfiles: 'deny',
+    headers: { 'Content-Type': file.mimeType },
+  }, (error) => {
     if (error && !res.headersSent) next(error);
   });
 });

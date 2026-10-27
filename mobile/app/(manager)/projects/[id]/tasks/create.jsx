@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, Modal, FlatList,
+  View, Text, TouchableOpacity, StyleSheet,
+  ScrollView, Alert, ActivityIndicator, Modal, FlatList, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
+import ThemedTextInput from '../../../../../src/components/ThemedTextInput';
 import { TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import { useCreateTask } from '../../../../../src/hooks/useTasks';
 import { useProjectTeam } from '../../../../../src/hooks/useProjects';
@@ -23,7 +24,7 @@ export default function CreateTask() {
     description: '',
     priority: 'NORMAL',
     dueDate: '',
-    assignedTo: '',
+    assigneeIds: [],
   });
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,7 +36,7 @@ export default function CreateTask() {
     if (!teamData?.members) return [];
     return teamData.members
       .map((m) => m.user)
-      .filter((u) => u && u.role === 'WORKER');
+      .filter((u) => u && u.role === 'WORKER' && u.status === 'ACTIVE' && u.isActive !== false);
   }, [teamData]);
 
   const filteredWorkers = useMemo(() => {
@@ -49,11 +50,7 @@ export default function CreateTask() {
   // ─── Mutations ────────────────────────────────────────────────────────────
   const createMutation = useCreateTask(projectId);
 
-  const getSelectedWorkerName = () => {
-    if (!form.assignedTo) return 'Non assigné';
-    const w = workers.find((w) => w.id === form.assignedTo);
-    return w ? `${w.firstName} ${w.lastName}` : 'Chargement...';
-  };
+  const selectedWorkers = workers.filter((worker) => form.assigneeIds.includes(worker.id));
 
   const handleSubmit = () => {
     if (!form.title) {
@@ -66,7 +63,7 @@ export default function CreateTask() {
         description: form.description,
         priority: form.priority,
         dueDate: form.dueDate || undefined,
-        assignedTo: form.assignedTo || undefined,
+        assigneeIds: form.assigneeIds,
       },
       {
         onSuccess: () => {
@@ -81,25 +78,24 @@ export default function CreateTask() {
 
   const renderWorkerItem = ({ item }) => (
     <TouchableOpacity
-      style={[styles.workerModalItem, form.assignedTo === item.id && styles.workerModalItemSelected]}
+      style={[styles.workerModalItem, form.assigneeIds.includes(item.id) && styles.workerModalItemSelected]}
       onPress={() => {
-        setForm({ ...form, assignedTo: item.id });
-        setModalVisible(false);
-        setSearchQuery('');
+        const selected = form.assigneeIds.includes(item.id);
+        setForm({ ...form, assigneeIds: selected ? form.assigneeIds.filter((id) => id !== item.id) : [...form.assigneeIds, item.id] });
       }}
     >
       <View style={styles.avatarSmall}>
         <Text style={styles.avatarSmallText}>{item.firstName?.[0]}{item.lastName?.[0]}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.workerName, form.assignedTo === item.id && styles.selectedTextColor]}>
+        <Text style={[styles.workerName, form.assigneeIds.includes(item.id) && styles.selectedTextColor]}>
           {item.firstName} {item.lastName}
         </Text>
-        <Text style={[styles.workerEmail, form.assignedTo === item.id && styles.selectedTextMutedColor]}>
+        <Text style={[styles.workerEmail, form.assigneeIds.includes(item.id) && styles.selectedTextMutedColor]}>
           {item.email}
         </Text>
       </View>
-      {form.assignedTo === item.id && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+      {form.assigneeIds.includes(item.id) && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
     </TouchableOpacity>
   );
 
@@ -113,18 +109,18 @@ export default function CreateTask() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Text style={styles.title}>Nouvelle Tâche</Text>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Titre *</Text>
-          <TextInput style={styles.input} placeholder="Ex: Installer tableau électrique" value={form.title} onChangeText={(t) => setForm({ ...form, title: t })} />
+          <ThemedTextInput style={styles.input} placeholder="Ex: Installer tableau électrique" value={form.title} onChangeText={(t) => setForm({ ...form, title: t })} />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Description</Text>
-          <TextInput style={[styles.input, styles.textArea]} placeholder="Détails de la tâche..." value={form.description} onChangeText={(t) => setForm({ ...form, description: t })} multiline numberOfLines={4} />
+          <ThemedTextInput style={[styles.input, styles.textArea]} placeholder="Détails de la tâche..." value={form.description} onChangeText={(t) => setForm({ ...form, description: t })} multiline numberOfLines={4} />
         </View>
 
         <View style={styles.formGroup}>
@@ -148,20 +144,12 @@ export default function CreateTask() {
           <Text style={styles.label}>Assigner à</Text>
           <TouchableOpacity style={styles.selectorCard} onPress={() => setModalVisible(true)}>
             <View style={styles.selectorInfo}>
-              <View style={styles.avatar}>
-                {form.assignedTo ? (
-                  <Text style={styles.avatarText}>
-                    {workers.find((w) => w.id === form.assignedTo)?.firstName?.[0]}
-                    {workers.find((w) => w.id === form.assignedTo)?.lastName?.[0]}
-                  </Text>
-                ) : (
-                  <Ionicons name="person-outline" size={20} color={colors.primary} />
-                )}
-              </View>
-              <Text style={styles.selectorText}>{getSelectedWorkerName()}</Text>
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
+              <Text style={styles.selectorText}>{selectedWorkers.length ? `${selectedWorkers.length} ouvrier(s) sélectionné(s)` : 'Aucun ouvrier assigné'}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
+          {selectedWorkers.length > 0 && <View style={styles.selectedWorkerChips}>{selectedWorkers.map((worker) => <Text key={worker.id} style={styles.selectedWorkerChip}>{worker.firstName} {worker.lastName?.[0]}.</Text>)}</View>}
         </View>
 
         <TouchableOpacity
@@ -187,7 +175,7 @@ export default function CreateTask() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choisir un ouvrier</Text>
+              <Text style={styles.modalTitle}>Choisir les ouvriers</Text>
               <TouchableOpacity onPress={() => { setModalVisible(false); setSearchQuery(''); }}>
                 <Ionicons name="close" size={24} color={colors.textDark} />
               </TouchableOpacity>
@@ -195,7 +183,7 @@ export default function CreateTask() {
 
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={20} color={colors.textMuted} />
-              <TextInput style={styles.searchInput} placeholder="Rechercher..." value={searchQuery} onChangeText={setSearchQuery} />
+              <ThemedTextInput style={styles.searchInput} placeholder="Rechercher..." value={searchQuery} onChangeText={setSearchQuery} />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
                   <Ionicons name="close-circle" size={20} color={colors.textMuted} />
@@ -204,14 +192,14 @@ export default function CreateTask() {
             </View>
 
             <TouchableOpacity
-              style={[styles.workerModalItem, !form.assignedTo && styles.workerModalItemSelected]}
-              onPress={() => { setForm({ ...form, assignedTo: '' }); setModalVisible(false); setSearchQuery(''); }}
+              style={[styles.workerModalItem, form.assigneeIds.length === 0 && styles.workerModalItemSelected]}
+              onPress={() => { setForm({ ...form, assigneeIds: [] }); }}
             >
               <View style={styles.avatarSmall}>
-                <Ionicons name="person-remove-outline" size={18} color={!form.assignedTo ? '#fff' : colors.primary} />
+                <Ionicons name="person-remove-outline" size={18} color={form.assigneeIds.length === 0 ? '#fff' : colors.primary} />
               </View>
-              <Text style={[styles.workerName, !form.assignedTo && styles.selectedTextColor]}>Non assigné</Text>
-              {!form.assignedTo && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+              <Text style={[styles.workerName, form.assigneeIds.length === 0 && styles.selectedTextColor]}>Aucun ouvrier assigné</Text>
+              {form.assigneeIds.length === 0 && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
             </TouchableOpacity>
 
             <FlatList
@@ -242,13 +230,13 @@ export default function CreateTask() {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { padding: 24 },
+  scrollContent: { padding: 24, paddingBottom: 48 },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.textDark, marginBottom: 24 },
   formGroup: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '600', color: colors.textDark, marginBottom: 8 },
@@ -261,6 +249,8 @@ const styles = StyleSheet.create({
   priorityTextSelected: { color: '#fff' },
   selectorCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 12, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E0E0E0' },
   selectorInfo: { flexDirection: 'row', alignItems: 'center' },
+  selectedWorkerChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  selectedWorkerChip: { backgroundColor: colors.primaryLight, color: colors.primary, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
   selectorText: { fontSize: 16, color: colors.textDark, marginLeft: 12, fontWeight: '500' },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 14, fontWeight: 'bold', color: colors.primary },

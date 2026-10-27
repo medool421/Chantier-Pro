@@ -70,6 +70,7 @@ app.use(errorMiddleware);
    SERVER START
 ====================== */
 const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0';
 
 if (process.env.NODE_ENV !== 'test') {
   (async () => {
@@ -79,8 +80,8 @@ if (process.env.NODE_ENV !== 'test') {
 
       console.log('Database migrations must be applied explicitly before startup.');
 
-      app.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT}`);
+      app.listen(PORT, HOST, () => {
+        console.log(`🚀 Server running on ${HOST}:${PORT}`);
       });
     } catch (err) {
       console.error('❌ Startup error:', err);

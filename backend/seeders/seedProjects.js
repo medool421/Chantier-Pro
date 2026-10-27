@@ -7,6 +7,7 @@ const seedProjects = async () => {
   const manager1 = await User.findOne({ where: { email: 'manager1@test.com' } });
   const manager2 = await User.findOne({ where: { email: 'manager2@test.com' } });
   const manager3 = await User.findOne({ where: { email: 'manager3@test.com' } });
+  const companyId = boss.companyId || manager1.companyId;
 
   const projects = [
     {
@@ -16,6 +17,7 @@ const seedProjects = async () => {
       status: 'IN_PROGRESS',
       bossId: boss.id,
       managerId: manager1.id,
+      companyId,
     },
     {
       name: 'Chantier B',
@@ -24,6 +26,7 @@ const seedProjects = async () => {
       status: 'PLANNED',
       bossId: boss.id,
       managerId: manager2.id,
+      companyId,
     },
     {
       name: 'Chantier C',
@@ -32,6 +35,7 @@ const seedProjects = async () => {
       status: 'PLANNED',
       bossId: boss.id,
       managerId: manager3.id,
+      companyId,
     },
   ];
 

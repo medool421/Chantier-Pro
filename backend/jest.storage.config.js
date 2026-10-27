@@ -1,0 +1,6 @@
+module.exports = {
+  testEnvironment: 'node',
+  rootDir: '.',
+  testRegex: '[/\\\\]src[/\\\\]tests[/\\\\]integration[/\\\\]file-storage\\.test\\.js$',
+  testPathIgnorePatterns: ['/node_modules/'],
+};

@@ -2,6 +2,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { tasksService } from '../api/tasks.service';
 import { queryClient } from '../utils/queryClient';
 import { QUERY_KEYS } from '../utils/queryKeys';
+import { useAuthStore } from '../store/auth.store';
 
 // ─── Queries ───────────────────────────────────────────────────────────────
 
@@ -20,11 +21,15 @@ export const useTask = (id) =>
   });
 
 // Worker: fetch only tasks assigned to the logged-in user
-export const useMyTasks = () =>
-  useQuery({
-    queryKey: QUERY_KEYS.tasks.mine,
+export const useMyTasks = () => {
+  const userId = useAuthStore((state) => state.user?.id);
+
+  return useQuery({
+    queryKey: QUERY_KEYS.tasks.mineForUser(userId),
     queryFn: tasksService.getMyTasks,
+    enabled: !!userId,
   });
+};
 
 // ─── Mutations ─────────────────────────────────────────────────────────────
 

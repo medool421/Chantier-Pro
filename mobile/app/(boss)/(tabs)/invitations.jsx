@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   Alert,
@@ -15,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invitationsService } from '../../../src/api/invitations.service';
 import api from '../../../src/api/axios';
 import { colors } from '../../../src/theme/colors';
+import ThemedTextInput from '../../../src/components/ThemedTextInput';
 import { QUERY_KEYS } from '../../../src/utils/queryKeys';
 
 const ROLES = ['MANAGER', 'WORKER'];
@@ -138,7 +138,7 @@ export default function InvitationsScreen() {
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Inviter un membre</Text>
 
-        <TextInput
+        <ThemedTextInput
           placeholder="Email du collaborateur"
           autoCapitalize="none"
           autoCorrect={false}
@@ -146,7 +146,6 @@ export default function InvitationsScreen() {
           value={email}
           onChangeText={(text) => setEmail(text.replace(/\s/g, ''))}
           style={styles.input}
-          placeholderTextColor={colors.textMuted}
         />
 
         {/* Role selector */}

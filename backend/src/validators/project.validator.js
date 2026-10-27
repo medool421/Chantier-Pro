@@ -6,7 +6,7 @@ const createProjectSchema = Joi.object({
     address: Joi.string().allow('', null),
     startDate: Joi.date().iso().required(),
     endDate: Joi.date().iso().min(Joi.ref('startDate')).allow(null),
-    budget: Joi.number().min(0).allow(null),
+    budget: Joi.number().min(0).allow(null, ''),
     status: Joi.string().valid('PLANNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED').default('PLANNED')
 });
 
@@ -16,7 +16,7 @@ const updateProjectSchema = Joi.object({
     address: Joi.string().allow('', null),
     startDate: Joi.date().iso(),
     endDate: Joi.date().iso().min(Joi.ref('startDate')).allow(null),
-    budget: Joi.number().min(0).allow(null),
+    budget: Joi.number().min(0).allow(null, ''),
     status: Joi.string().valid('PLANNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED')
 });
 

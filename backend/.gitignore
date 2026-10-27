@@ -1,0 +1,14 @@
+# Local environment and secrets
+.env
+.env.*
+
+# Local uploads (preserve an intentional placeholder)
+/uploads/*
+!/uploads/.gitkeep
+
+# Logs and temporary test output
+*.log
+coverage/
+test-results/
+*.tmp
+*.temp

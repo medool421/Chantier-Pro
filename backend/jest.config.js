@@ -1,8 +1,15 @@
 module.exports = {
-  testEnvironment: 'node',
+  testEnvironment: './src/tests/jestEnvironment.js',
   rootDir: '.',
-  testMatch: ['<rootDir>/src/tests/**/*.test.js'],
-  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.js'],
-  clearMocks: true,
-  forceExit: true,
+  testRegex: '[/\\\\]src[/\\\\]tests[/\\\\].*\\.test\\.js$',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '[/\\\\]src[/\\\\]tests[/\\\\]safety[/\\\\]',
+    '[/\\\\]src[/\\\\]tests[/\\\\]integration[/\\\\]file-storage\\.test\\.js$',
+  ],
+  setupTestFrameworkScriptFile: '<rootDir>/src/tests/setup.js',
+  transform: {},
+  moduleNameMapper: {
+    '^expo-server-sdk$': '<rootDir>/src/tests/mocks/expo-server-sdk.js',
+  },
 };

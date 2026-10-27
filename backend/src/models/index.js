@@ -5,6 +5,7 @@ const Project = require('./Project');
 const Team = require('./Team');
 const TeamMember = require('./TeamMember');
 const Task = require('./Task');
+const TaskAssignment = require('./TaskAssignment');
 const File = require('./File');
 const Report = require('./Report');
 const Company = require('./Company');
@@ -42,8 +43,10 @@ Project.hasMany(File, { as: 'files', foreignKey: 'projectId' });
 File.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
 
 // User ↔ Task
-User.hasMany(Task, { as: 'assignedTasks', foreignKey: 'assignedTo' });
 Task.belongsTo(User, { as: 'assignee', foreignKey: 'assignedTo' });
+
+Task.belongsToMany(User, { through: TaskAssignment, as: 'assignees', foreignKey: 'taskId', otherKey: 'userId' });
+User.belongsToMany(Task, { through: TaskAssignment, as: 'assignedTasks', foreignKey: 'userId', otherKey: 'taskId' });
 
 User.hasMany(Task, { as: 'createdTasks', foreignKey: 'createdBy' });
 Task.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
@@ -98,6 +101,7 @@ module.exports = {
   Team,
   TeamMember,
   Task,
+  TaskAssignment,
   File,
   Report,
   Company,

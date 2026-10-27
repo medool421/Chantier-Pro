@@ -3,13 +3,11 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../src/theme/colors';
 import { useMyNotifications, useMarkAsRead, useMarkAllAsRead } from '../src/hooks/useNotifications';
 import { useAuthStore } from '../src/store/auth.store';
-import { tasksService } from '../src/api/tasks.service';
-import { projectsService } from '../src/api/projects.service';
 
 const NOTIFICATION_ICONS = {
   TASK_ASSIGNED:          { name: 'clipboard-outline',   color: '#1976D2' },
@@ -41,11 +39,6 @@ export default function NotificationsScreen() {
   const markAllAsReadMutation = useMarkAllAsRead();
 
   const handlePress = async (item) => {
-    // Mark as read
-    if (!item.isRead) {
-      markAsReadMutation.mutate(item.id);
-    }
-
     const taskId = item.data?.taskId;
     const projectId = item.data?.projectId;
     if (!taskId && !projectId) {
@@ -55,27 +48,27 @@ export default function NotificationsScreen() {
 
     setOpeningId(item.id);
     try {
-      if (taskId) {
-        const task = await tasksService.getById(taskId);
-        const resolvedProjectId = task?.projectId || projectId;
+      if (!item.isRead) {
+        try {
+          await markAsReadMutation.mutateAsync(item.id);
+        } catch {
+          // The task remains accessible even if marking the notification fails.
+        }
+      }
 
+      if (taskId) {
         if (role === 'WORKER') {
           router.push(`/(worker)/tasks/${taskId}`);
-        } else if (role === 'MANAGER' && resolvedProjectId) {
-          router.push({
-            pathname: `/(manager)/projects/${resolvedProjectId}/tasks/${taskId}`,
-            params: { projectId: resolvedProjectId },
-          });
-        } else if (role === 'BOSS' && resolvedProjectId) {
-          router.push(`/(boss)/projects/${resolvedProjectId}`);
+        } else if (role === 'MANAGER' && projectId) {
+          router.push(`/(manager)/projects/${projectId}/tasks/${taskId}`);
+        } else if (role === 'BOSS' && projectId) {
+          router.push(`/(boss)/projects/${projectId}`);
         } else {
           throw new Error('No role-appropriate task destination');
         }
       } else if (role === 'MANAGER') {
-        await projectsService.getById(projectId);
         router.push(`/(manager)/projects/${projectId}`);
       } else if (role === 'BOSS') {
-        await projectsService.getById(projectId);
         router.push(`/(boss)/projects/${projectId}`);
       } else {
         throw new Error('No role-appropriate project destination');
@@ -143,19 +136,23 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header actions */}
-      {unreadCount > 0 && (
-        <TouchableOpacity
-          style={styles.markAllButton}
-          onPress={() => markAllAsReadMutation.mutate()}
-          disabled={markAllAsReadMutation.isPending}
-        >
-          <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
-          <Text style={styles.markAllText}>Tout marquer comme lu</Text>
-        </TouchableOpacity>
-      )}
-
+    <>
+      <Stack.Screen
+        options={{
+          headerRight: unreadCount > 0
+            ? () => (
+              <TouchableOpacity
+                onPress={() => markAllAsReadMutation.mutate()}
+                disabled={markAllAsReadMutation.isPending}
+                style={styles.headerMarkAllButton}
+              >
+                <Text style={styles.headerMarkAllText}>Tout marquer comme lu</Text>
+              </TouchableOpacity>
+            )
+            : undefined,
+        }}
+      />
+      <View style={styles.container}>
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
@@ -177,7 +174,8 @@ export default function NotificationsScreen() {
           </View>
         }
       />
-    </View>
+      </View>
+    </>
   );
 }
 
@@ -188,8 +186,8 @@ const styles = StyleSheet.create({
   errorText:     { fontSize: 14, color: colors.textMuted, marginTop: 8, textAlign: 'center' },
   retryButton:   { marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 8 },
   retryText:     { color: '#fff', fontSize: 14, fontWeight: '600' },
-  markAllButton: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  markAllText:   { fontSize: 14, color: colors.primary, fontWeight: '600' },
+  headerMarkAllButton: { paddingHorizontal: 4, paddingVertical: 8 },
+  headerMarkAllText:   { fontSize: 12, color: colors.primary, fontWeight: '600' },
   list:          { paddingBottom: 24 },
   item:          { flexDirection: 'row', alignItems: 'flex-start', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   itemUnread:    { backgroundColor: '#F0F4FF' },

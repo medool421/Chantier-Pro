@@ -2,7 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const AppError = require('./AppError');
 
-const uploadDir = path.resolve(path.join(__dirname, '../../uploads'));
+const defaultUploadDir = path.resolve(path.join(__dirname, '../../uploads'));
+const configuredUploadDir = process.env.FILE_STORAGE_DIR;
+const uploadDir = configuredUploadDir
+  ? path.resolve(configuredUploadDir)
+  : defaultUploadDir;
 
 function isWithinUploadDir(filePath) {
   const relativePath = path.relative(uploadDir, path.resolve(filePath));

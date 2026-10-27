@@ -8,32 +8,46 @@ require('dotenv').config({
 });
 
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
-    dialect: 'postgres',
-    logging: process.env.DB_LOGGING === 'true' ? console.log : false,
+const sequelizeOptions = {
+  dialect: 'postgres',
+  logging: process.env.DB_LOGGING === 'true' ? console.log : false,
 
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+
+  timezone: '+00:00',
+
+  define: {
+    timestamps: true,
+    underscored: false,
+    freezeTableName: true,
+  },
+};
+
+const sequelize = process.env.DATABASE_URL
+  ? new Sequelize(process.env.DATABASE_URL, {
+    ...sequelizeOptions,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
     },
-
-    timezone: '+00:00',
-
-    define: {
-      timestamps: true,
-      underscored: false,
-      freezeTableName: true,
-    },
-  }
-);
+  })
+  : new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
+    {
+      ...sequelizeOptions,
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT || 5432,
+    }
+  );
 
 // ===============================
 // Test DB Connection

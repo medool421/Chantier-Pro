@@ -1,8 +1,9 @@
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthStore } from '../../src/store/auth.store';
 import { colors } from '../../src/theme/colors';
+import ThemedTextInput from '../../src/components/ThemedTextInput';
 
 export default function Login() {
   const login = useAuthStore((s) => s.login);
@@ -31,11 +32,12 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardContainer}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Image source={require('../../src/assets/ChantierPro.png')} style={styles.image} />
       <Text style={styles.title}>Se connecter</Text>
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Email"
         autoCapitalize="none"
         keyboardType="email-address"
@@ -44,7 +46,7 @@ export default function Login() {
         style={styles.input}
       />
 
-      <TextInput
+      <ThemedTextInput
         placeholder="Mot de passe"
         secureTextEntry
         value={password}
@@ -80,16 +82,19 @@ export default function Login() {
       <Text style={styles.hint}>
         Vous avez reçu une invitation ? Ouvrez le lien dans votre email.
       </Text>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: { flex: 1, backgroundColor: colors.backgroundLight },
   container: {
     flexGrow: 1,
     backgroundColor: colors.backgroundLight,
     padding: 24,
     justifyContent: 'flex-start',
+    paddingBottom: 48,
   },
   image: {
     width: 150,

@@ -8,6 +8,9 @@ import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../src/utils/con
 import { useMyTasks } from '../../../src/hooks/useTasks';
 import NotificationBell from '../../../src/components/NotificationBell';
 
+const getInitials = (worker) => `${worker?.firstName?.[0] || ''}${worker?.lastName?.[0] || ''}`.toUpperCase();
+const getWorkerName = (worker) => [worker?.firstName, worker?.lastName].filter(Boolean).join(' ');
+
 export default function WorkerDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -24,10 +27,21 @@ export default function WorkerDashboard() {
     completed: tasks.filter((t) => t.status === 'COMPLETED').length,
   };
 
-  const renderTaskItem = ({ item }) => (
+  const renderTaskItem = ({ item }) => {
+    const assignedWorkers = item.assignees?.length ? item.assignees : (item.assignee ? [item.assignee] : []);
+
+    return (
     <TouchableOpacity
       style={styles.taskCard}
-      onPress={() => router.push(`/(worker)/tasks/${item.id}`)}
+      onPress={() => {
+        const taskId = item?.id;
+        if (taskId) {
+          router.push({
+            pathname: '/(worker)/tasks/[id]',
+            params: { id: String(taskId) },
+          });
+        }
+      }}
     >
       <View style={styles.taskHeader}>
         <View style={{ flex: 1 }}>
@@ -35,12 +49,25 @@ export default function WorkerDashboard() {
           <Text style={styles.projectName} numberOfLines={1}>📁 {item.project?.name || 'Projet'}</Text>
         </View>
         <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) }]}>
-          <Text style={styles.priorityText}>{TASK_PRIORITY_LABELS[item.priority]}</Text>
+          <Text style={styles.priorityText}>{TASK_PRIORITY_LABELS[item.priority] || (item.priority === 'URGENT' ? 'Urgente' : 'Normale')}</Text>
         </View>
       </View>
 
       {item.description && (
         <Text style={styles.taskDescription} numberOfLines={2}>{item.description}</Text>
+      )}
+
+      {assignedWorkers.length > 0 && (
+        <View style={styles.assigneeList}>
+          {assignedWorkers.map((worker) => (
+            <View key={worker.id} style={styles.assigneeBadge}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{getInitials(worker)}</Text>
+              </View>
+              <Text style={styles.assigneeName} numberOfLines={1}>{getWorkerName(worker)}</Text>
+            </View>
+          ))}
+        </View>
       )}
 
       <View style={styles.taskFooter}>
@@ -61,7 +88,8 @@ export default function WorkerDashboard() {
         )}
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -166,10 +194,15 @@ const styles = StyleSheet.create({
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   taskTitle: { fontSize: 16, fontWeight: '600', color: colors.textDark, marginBottom: 4 },
   projectName: { fontSize: 12, color: colors.textMuted },
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8, height: 24, justifyContent: 'center' },
   priorityText: { fontSize: 10, fontWeight: '600', color: colors.textDark },
   taskDescription: { fontSize: 14, color: colors.textMuted, marginBottom: 12, lineHeight: 20 },
-  taskFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  assigneeList: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 10 },
+  assigneeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', paddingRight: 8, borderRadius: 16, maxWidth: '100%' },
+  avatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginRight: 6 },
+  avatarText: { fontSize: 10, fontWeight: 'bold', color: colors.primary },
+  assigneeName: { fontSize: 12, color: colors.textMuted },
+  taskFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 11, fontWeight: '600', color: colors.textDark },
   dueDateContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },

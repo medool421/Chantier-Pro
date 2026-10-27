@@ -15,11 +15,7 @@ function getMigrationFiles() {
 }
 
 async function ensureTrackingTable(queryInterface, transaction) {
-  const tables = await queryInterface.showAllTables({ transaction });
-  const exists = tables.some((table) => {
-    const name = typeof table === 'string' ? table : table.tableName;
-    return name === trackingTable;
-  });
+  const exists = await trackingTableExists(queryInterface, transaction);
 
   if (!exists) {
     await queryInterface.createTable(trackingTable, {
@@ -29,11 +25,25 @@ async function ensureTrackingTable(queryInterface, transaction) {
   }
 }
 
-async function getAppliedMigrations(transaction) {
-  return sequelize.query(
+async function trackingTableExists(queryInterface, transaction) {
+  const tables = await queryInterface.showAllTables({ transaction });
+  return tables.some((table) => {
+    const name = typeof table === 'string' ? table : table.tableName;
+    return name === trackingTable;
+  });
+}
+
+async function getAppliedMigrations(transaction, sequelizeInstance = sequelize) {
+  return sequelizeInstance.query(
     `SELECT "name", "appliedAt" FROM "${trackingTable}" ORDER BY "appliedAt", "name"`,
     { type: QueryTypes.SELECT, transaction }
   );
+}
+
+async function getMigrationStatusSnapshot(queryInterface, transaction, sequelizeInstance = sequelize) {
+  const exists = await trackingTableExists(queryInterface, transaction);
+  if (!exists) return new Map();
+  return new Map((await getAppliedMigrations(transaction, sequelizeInstance)).map((row) => [row.name, row.appliedAt]));
 }
 
 async function withMigrationLock(callback) {
@@ -76,8 +86,7 @@ async function migrationStatus() {
   return withMigrationLock(async () => {
     await sequelize.authenticate();
     const queryInterface = sequelize.getQueryInterface();
-    await ensureTrackingTable(queryInterface);
-    const applied = new Map((await getAppliedMigrations()).map((row) => [row.name, row.appliedAt]));
+    const applied = await getMigrationStatusSnapshot(queryInterface);
 
     for (const migration of getMigrationFiles()) {
       const value = applied.get(migration.name);
@@ -133,5 +142,7 @@ module.exports = {
   migrateDown,
   migrationStatus,
   ensureTrackingTable,
+  trackingTableExists,
+  getMigrationStatusSnapshot,
   getMigrationFiles,
 };
