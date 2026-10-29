@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
 import { colors } from '../../src/theme/colors';
 import ThemedTextInput from '../../src/components/ThemedTextInput';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RegisterBoss() {
   const registerBoss = useAuthStore((s) => s.registerBoss);
@@ -23,16 +24,18 @@ export default function RegisterBoss() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
 
   const handleRegister = async () => {
-    if (!firstName || !lastName || !email || !password || !companyName) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !companyName.trim()) {
       Alert.alert('Champs manquants', 'Veuillez remplir tous les champs.');
       return;
     }
 
     try {
-      await registerBoss({ firstName, lastName, email, password, companyName });
+      await registerBoss({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim().toLowerCase(), password, phone: phone.trim(), companyName: companyName.trim() });
       router.replace('/');
     } catch (err) {
       let message = 'Impossible de créer le compte';
@@ -54,18 +57,21 @@ export default function RegisterBoss() {
 
       <Text style={styles.sectionLabel}>INFORMATIONS PERSONNELLES</Text>
 
+      <Text style={styles.fieldLabel}>Prénom <Text style={styles.required}>*</Text></Text>
       <ThemedTextInput
         placeholder="Prénom"
         value={firstName}
         onChangeText={setFirstName}
         style={styles.input}
       />
+      <Text style={styles.fieldLabel}>Nom <Text style={styles.required}>*</Text></Text>
       <ThemedTextInput
         placeholder="Nom"
         value={lastName}
         onChangeText={setLastName}
         style={styles.input}
       />
+      <Text style={styles.fieldLabel}>Email professionnel <Text style={styles.required}>*</Text></Text>
       <ThemedTextInput
         placeholder="Email professionnel"
         autoCapitalize="none"
@@ -74,22 +80,25 @@ export default function RegisterBoss() {
         onChangeText={setEmail}
         style={styles.input}
       />
-      <ThemedTextInput
-        placeholder="Mot de passe"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
+      <Text style={styles.fieldLabel}>Mot de passe <Text style={styles.required}>*</Text></Text>
+      <View style={styles.passwordContainer}>
+        <ThemedTextInput placeholder="Mot de passe" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.passwordInput} />
+        <Pressable onPress={() => setShowPassword((visible) => !visible)} accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} hitSlop={10}>
+          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={21} color={colors.textMuted} />
+        </Pressable>
+      </View>
 
       <Text style={styles.sectionLabel}>VOTRE ENTREPRISE</Text>
 
+      <Text style={styles.fieldLabel}>Nom de l'entreprise <Text style={styles.required}>*</Text></Text>
       <ThemedTextInput
         placeholder="Nom de l'entreprise"
         value={companyName}
         onChangeText={setCompanyName}
         style={styles.input}
       />
+      <Text style={styles.fieldLabel}>Téléphone</Text>
+      <ThemedTextInput placeholder="Téléphone" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.input} />
 
       <Pressable
         style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
@@ -149,6 +158,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
+  fieldLabel: { color: colors.textDark, fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  required: { color: '#dc2626' },
   input: {
     height: 52,
     borderRadius: 14,
@@ -158,6 +169,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textDark,
   },
+  passwordContainer: { height: 52, borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: 16, marginBottom: 14, flexDirection: 'row', alignItems: 'center' },
+  passwordInput: { flex: 1, height: 52, fontSize: 16, color: colors.textDark, paddingRight: 10 },
   primaryButton: {
     height: 56,
     borderRadius: 999,

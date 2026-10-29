@@ -1,5 +1,16 @@
 const invitationService = require('../services/invitation.service');
+const authService = require('../services/auth.service');
 const catchAsync = require('../utils/catchAsync');
+
+// POST /invitations/register — public registration using the invitation token
+exports.registerInvitedUser = catchAsync(async (req, res) => {
+  const result = await authService.register(req.body);
+
+  res.status(201).json({
+    success: true,
+    data: result,
+  });
+});
 
 // POST /invitations — BOSS sends an invitation
 exports.sendInvitation = catchAsync(async (req, res) => {

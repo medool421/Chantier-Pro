@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -43,6 +44,19 @@ export default function InvitationsScreen() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('MANAGER');
 
+  const shareInvitation = async (invitation) => {
+    if (!invitation?.token) {
+      Alert.alert('Lien indisponible', 'Le code de cette invitation est introuvable.');
+      return;
+    }
+    const link = `chantierpro://invite/${invitation.token}`;
+    try {
+      await Share.share({ message: `Rejoignez mon équipe sur ChantierPro : ${link}`, url: link });
+    } catch {
+      Alert.alert('Lien d’invitation', link);
+    }
+  };
+
   // GET /api/invitations — list of invitations sent by this boss
   const {
     data: invitations = [],
@@ -53,12 +67,18 @@ export default function InvitationsScreen() {
     queryKey: QUERY_KEYS.invitations.all,
     queryFn: () => api.get('/invitations').then((r) => r.data.data ?? r.data),
   });
-
   // Send invite mutation
   const sendMutation = useMutation({
     mutationFn: ({ email, role }) => invitationsService.send({ email, role }),
-    onSuccess: () => {
-      Alert.alert('Invitation envoyée', `Un email a été envoyé à ${email}.`);
+    onSuccess: (result) => {
+      const invitation = result.data;
+      const deliveryMessage = invitation.emailSent === false
+        ? `L’email n’a pas pu être envoyé à ${email}. Vous pouvez partager le lien directement.`
+        : `Un email a été envoyé à ${email}. Vous pouvez aussi partager le lien directement.`;
+      Alert.alert('Invitation créée', deliveryMessage, [
+        { text: 'Plus tard', style: 'cancel' },
+        { text: 'Partager le lien', onPress: () => shareInvitation(invitation) },
+      ]);
       setEmail('');
       qc.invalidateQueries({ queryKey: QUERY_KEYS.invitations.all });
     },
@@ -83,7 +103,7 @@ export default function InvitationsScreen() {
       Alert.alert('Champ manquant', 'Veuillez saisir une adresse email.');
       return;
     }
-    sendMutation.mutate({ email: email.trim(), role });
+    sendMutation.mutate({ email: email.trim().toLowerCase(), role });
   };
 
   const handleRevoke = (invitation) => {
@@ -119,6 +139,10 @@ export default function InvitationsScreen() {
               ? new Date(item.createdAt).toLocaleDateString('fr-FR')
               : '—'}
           </Text>
+          <TouchableOpacity style={styles.shareButton} onPress={() => shareInvitation(item)}>
+            <Ionicons name="share-social-outline" size={16} color={colors.primary} />
+            <Text style={styles.shareText}>Partager le lien</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.revokeButton}
             onPress={() => handleRevoke(item)}
@@ -349,6 +373,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  shareButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  shareText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
   revokeText: {
     fontSize: 13,
     color: '#C62828',

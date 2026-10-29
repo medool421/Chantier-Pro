@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { Op } = require('sequelize');
 const { Invitation, User, Company } = require('../models');
 const AppError = require('../utils/AppError');
 const { sendNotification } = require('./notification.service');
@@ -12,6 +13,7 @@ function generateToken() {
 
 // ─── Send an invitation ────────────────────────────────────────────────────
 async function sendInvitation({ email, role, invitedBy, companyId }) {
+  email = email.trim().toLowerCase();
   const inviter = await User.findByPk(invitedBy);
   if (!inviter) throw new AppError('Inviter not found', 404);
   if (inviter.companyId !== companyId) throw new AppError('Unauthorized', 403);
@@ -20,11 +22,11 @@ async function sendInvitation({ email, role, invitedBy, companyId }) {
   const company = await Company.findByPk(companyId);
   if (!company) throw new AppError('Company not found', 404);
 
-  const existingUser = await User.findOne({ where: { email, companyId } });
-  if (existingUser) throw new AppError('This user is already a member of the company', 409);
+  const existingUser = await User.findOne({ where: { email: { [Op.iLike]: email } } });
+  if (existingUser) throw new AppError('This email address is already used by an existing user', 409);
 
   const existingInvitation = await Invitation.findOne({
-    where: { email, companyId, status: 'PENDING' },
+    where: { email: { [Op.iLike]: email }, companyId, status: 'PENDING' },
   });
   if (existingInvitation) throw new AppError('A pending invitation already exists for this email', 409);
 
@@ -42,14 +44,22 @@ async function sendInvitation({ email, role, invitedBy, companyId }) {
   });
 
   // Send email — after DB insert so invitation exists even if email fails
-  await sendInvitationEmail({
-    to: email,
-    inviterName: `${inviter.firstName} ${inviter.lastName}`,
-    companyName: company.name,
-    role,
-    token,
-    expiresAt,
-  });
+  let emailSent = true;
+  try {
+    await sendInvitationEmail({
+      to: email,
+      inviterName: `${inviter.firstName} ${inviter.lastName}`,
+      companyName: company.name,
+      role,
+      token,
+      expiresAt,
+    });
+  } catch (error) {
+    emailSent = false;
+    console.error('[Invitation] Email delivery failed; invitation is available for direct sharing:', error.message);
+  }
+
+  invitation.setDataValue('emailSent', emailSent);
 
   return invitation;
 }
@@ -70,12 +80,8 @@ async function acceptInvitation({ token, userId }) {
   const user = await User.findByPk(userId);
   if (!user) throw new AppError('User not found', 404);
 
-  if (user.email !== invitation.email) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ DEV MODE: Email mismatch bypassed');
-    } else {
-      throw new AppError('This invitation was sent to a different email address', 403);
-    }
+  if (user.email.trim().toLowerCase() !== invitation.email.trim().toLowerCase()) {
+    throw new AppError('This invitation was sent to a different email address', 403);
   }
 
   await user.update({

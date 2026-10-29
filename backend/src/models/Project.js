@@ -25,7 +25,7 @@ const Project = sequelize.define('Project', {
 
   startDate: { type: DataTypes.DATEONLY },
   endDate: { type: DataTypes.DATEONLY },
-  budget: { type: DataTypes.DECIMAL(10, 2) },
+  budget: { type: DataTypes.DECIMAL(15, 2) },
 }, {
   tableName: 'projects',
   timestamps: true,

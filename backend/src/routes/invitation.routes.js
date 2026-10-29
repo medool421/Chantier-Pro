@@ -36,6 +36,9 @@ const role = require('../middlewares/role.middleware');
  */
 router.get('/validate/:token', invitationController.validateToken);
 
+// Public registration: the invitation token supplies the email, role and company.
+router.post('/register', invitationController.registerInvitedUser);
+
 // ─── Protected (auth required) ────────────────────────────────────────────
 router.use(auth);
 

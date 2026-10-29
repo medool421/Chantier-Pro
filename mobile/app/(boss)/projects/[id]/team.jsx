@@ -18,6 +18,8 @@ export default function BossProjectTeam() {
   const { id } = useLocalSearchParams();
   const projectId = Array.isArray(id) ? id[0] : id;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState([]);
+  const [isAddingSelected, setIsAddingSelected] = useState(false);
   const [createdTeamId, setCreatedTeamId] = useState(null);
 
   const {
@@ -54,7 +56,6 @@ export default function BossProjectTeam() {
     try {
       const createdTeam = await createTeamMutation.mutateAsync({
         name: 'Équipe projet',
-        description: 'Équipe gérée depuis l’application Boss',
         projectId,
       });
       setCreatedTeamId(createdTeam?.id || null);
@@ -69,17 +70,45 @@ export default function BossProjectTeam() {
 
   const openPicker = async () => {
     if (!teamId && !(await createTeam())) return;
+    setSelectedWorkerIds([]);
     setPickerOpen(true);
   };
 
-  const addWorker = async (worker) => {
-    if (!teamId) return;
+  const toggleWorker = (workerId) => {
+    setSelectedWorkerIds((current) => current.includes(workerId)
+      ? current.filter((id) => id !== workerId)
+      : [...current, workerId]);
+  };
+
+  const addSelectedWorkers = async () => {
+    const selectedWorkers = availableWorkers.filter((worker) => selectedWorkerIds.includes(worker.id));
+    if (!teamId || selectedWorkers.length === 0 || isAddingSelected) return;
+
+    setIsAddingSelected(true);
     try {
-      await addMemberMutation.mutateAsync({ teamId, userId: worker.id, roleInTeam: 'WORKER' });
-      setPickerOpen(false);
-      Alert.alert('Succès', `${worker.firstName} ${worker.lastName} a été ajouté à l’équipe.`);
+      const results = await Promise.allSettled(selectedWorkers.map((worker) =>
+        addMemberMutation.mutateAsync({ teamId, userId: worker.id, roleInTeam: 'WORKER' })
+      ));
+      const failedIds = results.flatMap((result, index) => result.status === 'rejected' ? [selectedWorkers[index].id] : []);
+      const addedCount = results.length - failedIds.length;
+      await refetch();
+
+      if (failedIds.length === 0) {
+        setPickerOpen(false);
+        setSelectedWorkerIds([]);
+        Alert.alert('Succès', `${addedCount} ouvrier${addedCount === 1 ? '' : 's'} ajouté${addedCount === 1 ? '' : 's'} à l’équipe.`);
+      } else {
+        setSelectedWorkerIds(failedIds);
+        const firstError = results.find((result) => result.status === 'rejected')?.reason;
+        Alert.alert(
+          'Ajout partiel',
+          `${addedCount} ouvrier${addedCount === 1 ? '' : 's'} ajouté${addedCount === 1 ? '' : 's'}. ${firstError?.response?.data?.message || 'Certains ouvriers n’ont pas pu être ajoutés.'}`
+        );
+      }
     } catch (error) {
-      Alert.alert('Erreur', error?.response?.data?.message || 'Impossible d’ajouter cet ouvrier.');
+      Alert.alert('Erreur', error?.response?.data?.message || 'Impossible d’ajouter les ouvriers sélectionnés.');
+    } finally {
+      setIsAddingSelected(false);
     }
   };
 
@@ -190,7 +219,6 @@ export default function BossProjectTeam() {
         ListHeaderComponent={
           <View style={styles.listHeader}>
             <Text style={styles.teamName}>{team.name || 'Équipe du projet'}</Text>
-            {!!team.description && <Text style={styles.teamDescription}>{team.description}</Text>}
             <Text style={styles.memberCount}>{members.length} membre{members.length === 1 ? '' : 's'}</Text>
           </View>
         }
@@ -223,9 +251,14 @@ export default function BossProjectTeam() {
               <FlatList
                 data={availableWorkers}
                 keyExtractor={(item) => item.id}
+                style={styles.workerList}
                 ListEmptyComponent={<Text style={styles.stateText}>Tous les ouvriers actifs de l’entreprise sont déjà dans l’équipe.</Text>}
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.workerOption} onPress={() => addWorker(item)} disabled={addMemberMutation.isPending}>
+                  <TouchableOpacity
+                    style={[styles.workerOption, selectedWorkerIds.includes(item.id) && styles.workerOptionSelected]}
+                    onPress={() => toggleWorker(item.id)}
+                    disabled={isAddingSelected}
+                  >
                     <View style={styles.avatarSmall}>
                       <Text style={styles.avatarSmallText}>{item.firstName?.[0]}{item.lastName?.[0]}</Text>
                     </View>
@@ -233,11 +266,24 @@ export default function BossProjectTeam() {
                       <Text style={styles.memberName}>{item.firstName} {item.lastName}</Text>
                       <Text style={styles.memberEmail}>{item.email}</Text>
                     </View>
-                    <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                    <Ionicons
+                      name={selectedWorkerIds.includes(item.id) ? 'checkbox' : 'square-outline'}
+                      size={24}
+                      color={selectedWorkerIds.includes(item.id) ? colors.primary : colors.textMuted}
+                    />
                   </TouchableOpacity>
                 )}
               />
             )}
+            <TouchableOpacity
+              style={[styles.confirmAddButton, (selectedWorkerIds.length === 0 || isAddingSelected) && styles.confirmAddButtonDisabled]}
+              onPress={addSelectedWorkers}
+              disabled={selectedWorkerIds.length === 0 || isAddingSelected}
+            >
+              {isAddingSelected ? <ActivityIndicator color="#fff" /> : (
+                <Text style={styles.confirmAddText}>Ajouter les ouvriers sélectionnés ({selectedWorkerIds.length})</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -259,7 +305,6 @@ const styles = StyleSheet.create({
   listContent: { paddingBottom: 24 },
   listHeader: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 14 },
   teamName: { fontSize: 20, fontWeight: '700', color: colors.textDark },
-  teamDescription: { color: colors.textMuted, fontSize: 13, marginTop: 5 },
   memberCount: { color: colors.primary, fontSize: 13, fontWeight: '600', marginTop: 10 },
   memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 14, borderRadius: 12, marginBottom: 10, elevation: 2 },
   memberInfo: { flex: 1, marginLeft: 10 },
@@ -274,8 +319,13 @@ const styles = StyleSheet.create({
   iconButton: { padding: 7, marginLeft: 4 },
   emptyContainer: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 20 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { maxHeight: '75%', backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18 },
+  modalContent: { height: '75%', backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   modalTitle: { color: colors.textDark, fontSize: 18, fontWeight: '700' },
+  workerList: { flex: 1, minHeight: 0 },
   workerOption: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, backgroundColor: '#F8F8F8', marginBottom: 8 },
+  workerOptionSelected: { backgroundColor: colors.primaryLight },
+  confirmAddButton: { minHeight: 50, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary, borderRadius: 10, marginTop: 12, paddingHorizontal: 12 },
+  confirmAddButtonDisabled: { opacity: 0.55 },
+  confirmAddText: { color: '#fff', fontWeight: '700', textAlign: 'center' },
 });

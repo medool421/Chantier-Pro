@@ -5,6 +5,19 @@ const { Invitation } = require('../models');
 const { signToken } = require('../utils/jwt');
 const AppError = require('../utils/AppError');
 const { sendNotification } = require('./notification.service');
+const { Op } = require('sequelize');
+
+async function assertEmailAvailable(email, transaction) {
+  const existing = await User.findOne({
+    where: { email: { [Op.iLike]: email } },
+    transaction,
+  });
+  if (existing) throw new AppError('Cette adresse email est déjà utilisée.', 400);
+}
+
+function isDuplicateEmailError(error) {
+  return error.name === 'SequelizeUniqueConstraintError';
+}
 
 // ─── Helper: build JWT ─────────────────────────────────────────────────────
 function buildToken(user) {
@@ -17,34 +30,42 @@ function buildToken(user) {
 
 // ─── Register BOSS + create Company atomically ────────────────────────────
 exports.registerBoss = async ({ password, companyName, ...userData }) => {
-  const result = await sequelize.transaction(async (t) => {
-    const company = await Company.create(
-      { name: companyName },
-      { transaction: t }
-    );
+  const normalizedEmail = userData.email.trim().toLowerCase();
+  try {
+    const result = await sequelize.transaction(async (t) => {
+      await assertEmailAvailable(normalizedEmail, t);
+      const company = await Company.create(
+        { name: companyName },
+        { transaction: t }
+      );
 
-    const user = await User.create(
-      {
-        ...userData,
-        passwordHash: password,
-        role: 'BOSS',
-        companyId: company.id,
-        status: 'ACTIVE',
-      },
-      { transaction: t }
-    );
+      const user = await User.create(
+        {
+          ...userData,
+          email: normalizedEmail,
+          passwordHash: password,
+          role: 'BOSS',
+          companyId: company.id,
+          status: 'ACTIVE',
+        },
+        { transaction: t }
+      );
 
-    return { user, company };
-  });
+      return { user, company };
+    });
 
-  const token = buildToken(result.user);
-  return { user: result.user, company: result.company, token };
+    const token = buildToken(result.user);
+    return { user: result.user, company: result.company, token };
+  } catch (error) {
+    if (isDuplicateEmailError(error)) throw new AppError('Cette adresse email est déjà utilisée.', 400);
+    throw error;
+  }
 };
 
 // ─── Register invited user (MANAGER or WORKER) ────────────────────────────
 // Email, role, and companyId are ALWAYS derived from the invitation.
 // Frontend only provides: firstName, lastName, password, inviteToken.
-exports.register = async ({ password, firstName, lastName, inviteToken, email }) => {
+exports.register = async ({ password, firstName, lastName, inviteToken, phone }) => {
   // Step 1 — fetch and validate invitation
   const invitation = await Invitation.findOne({ where: { token: inviteToken } });
 
@@ -58,32 +79,33 @@ exports.register = async ({ password, firstName, lastName, inviteToken, email })
   }
 
   // Step 2 — create user + mark invitation ACCEPTED atomically
-  const finalEmail =
-    process.env.NODE_ENV === 'development' && email
-        ? email
-        : invitation.email;
-        console.log({
-          invitationEmail: invitation.email,
-          usedEmail: finalEmail,
-        });
-  const user = await sequelize.transaction(async (t) => {
-    const newUser = await User.create(
-      {
-        firstName,
-        lastName,
-        email: finalEmail,          
-        passwordHash: password,
-        role: invitation.role,            // from invitation — never from frontend
-        companyId: invitation.companyId,  // from invitation — never from frontend
-        status: 'ACTIVE',
-      },
-      { transaction: t }
-    );
+  const finalEmail = invitation.email.trim().toLowerCase();
+  let user;
+  try {
+    user = await sequelize.transaction(async (t) => {
+      await assertEmailAvailable(finalEmail, t);
+      const newUser = await User.create(
+        {
+          firstName,
+          lastName,
+          email: finalEmail,
+          phone,
+          passwordHash: password,
+          role: invitation.role,            // from invitation — never from frontend
+          companyId: invitation.companyId,  // from invitation — never from frontend
+          status: 'ACTIVE',
+        },
+        { transaction: t }
+      );
 
-    await invitation.update({ status: 'ACCEPTED' }, { transaction: t });
+      await invitation.update({ status: 'ACCEPTED' }, { transaction: t });
 
-    return newUser;
-  });
+      return newUser;
+    });
+  } catch (error) {
+    if (isDuplicateEmailError(error)) throw new AppError('Cette adresse email est déjà utilisée.', 400);
+    throw error;
+  }
 
   // Step 3 — notify the inviter
   if (invitation.invitedBy) {
@@ -102,9 +124,10 @@ exports.register = async ({ password, firstName, lastName, inviteToken, email })
 
 // ─── Login ─────────────────────────────────────────────────────────────────
 exports.login = async (email, password) => {
-  const user = await User.findOne({ where: { email } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ where: { email: { [Op.iLike]: normalizedEmail } } });
 
-  if (!user || !(await user.comparePassword(password))) {
+  if (!user || !user.isActive || !(await user.comparePassword(password))) {
     throw new AppError('Invalid email or password', 401);
   }
 

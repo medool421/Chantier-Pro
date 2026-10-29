@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList,
+  View, Text, StyleSheet, FlatList, ScrollView,
   TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -13,8 +13,13 @@ import NotificationBell from '../../../src/components/NotificationBell';
 export default function BossHome() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
 
   const { data: projects = [], isLoading, isRefetching, refetch } = useProjects();
+  const filteredProjects = useMemo(
+    () => selectedStatus === 'ALL' ? projects : projects.filter((project) => project.status === selectedStatus),
+    [projects, selectedStatus]
+  );
 
   const renderProjectItem = ({ item }) => (
     <TouchableOpacity
@@ -28,6 +33,12 @@ export default function BossHome() {
       <Text style={styles.projectDescription} numberOfLines={2}>
         {item.description || 'Aucune description'}
       </Text>
+      <View style={styles.progressRow}>
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(Number(item.progressPercentage) || 0, 100))}%` }]} />
+        </View>
+        <Text style={styles.progressText}>{Number(item.progressPercentage) || 0}%</Text>
+      </View>
       <View style={styles.projectFooter}>
         <View style={styles.locationContainer}>
           <Ionicons name="location-outline" size={16} color={colors.textMuted} />
@@ -74,8 +85,27 @@ export default function BossHome() {
         </TouchableOpacity>
       </View>
 
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+        {[
+          { value: 'ALL', label: 'Toutes' },
+          { value: 'PLANNED', label: 'Planifiés' },
+          { value: 'IN_PROGRESS', label: 'En cours' },
+          { value: 'COMPLETED', label: 'Terminés' },
+        ].map((status) => (
+          <TouchableOpacity
+            key={status.value}
+            style={[styles.filterChip, selectedStatus === status.value && styles.filterChipActive]}
+            onPress={() => setSelectedStatus(status.value)}
+          >
+            <Text style={[styles.filterText, selectedStatus === status.value && styles.filterTextActive]}>
+              {status.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       <FlatList
-        data={projects}
+        data={filteredProjects}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderProjectItem}
         contentContainerStyle={styles.listContent}
@@ -89,7 +119,7 @@ export default function BossHome() {
         ListEmptyComponent={
           isLoading ? null : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Aucun chantier en cours.</Text>
+              <Text style={styles.emptyText}>{selectedStatus === 'ALL' ? 'Aucun chantier.' : 'Aucun chantier pour ce statut.'}</Text>
               
             </View>
           )
@@ -139,9 +169,18 @@ const styles = StyleSheet.create({
   projectHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   projectTitle: { fontSize: 18, fontWeight: '600', color: colors.textDark, flex: 1 },
   projectDescription: { fontSize: 14, color: colors.textMuted, marginBottom: 12 },
+  filterContainer: { gap: 8, paddingBottom: 14 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0E0E0' },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  filterTextActive: { color: '#fff' },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  progressBar: { flex: 1, height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
+  progressText: { minWidth: 34, fontSize: 12, textAlign: 'right', color: colors.textMuted },
   projectFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 12 },
-  locationContainer: { flexDirection: 'row', alignItems: 'center' },
-  locationText: { fontSize: 14, color: colors.textMuted, marginLeft: 4 },
+  locationContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 },
+  locationText: { flex: 1, fontSize: 14, color: colors.textMuted, marginLeft: 4 },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
   badgeText: { fontSize: 12, fontWeight: '600' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },

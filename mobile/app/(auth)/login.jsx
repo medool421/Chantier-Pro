@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Alert, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
 import { colors } from '../../src/theme/colors';
 import ThemedTextInput from '../../src/components/ThemedTextInput';
@@ -11,10 +12,12 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [invitationInput, setInvitationInput] = useState('');
 
   const handleLogin = async () => {
     try {
-      await login(email, password);
+      await login(email.trim().toLowerCase(), password);
       router.replace('/');
     } catch (err) {
       let message = 'Impossible de se connecter';
@@ -29,6 +32,16 @@ export default function Login() {
 
       Alert.alert('Erreur de connexion', message);
     }
+  };
+
+  const openInvitation = () => {
+    const value = invitationInput.trim();
+    const token = value.match(/(?:\/invite\/|invite\/)([^/?#]+)/i)?.[1] || value;
+    if (!token || /\s/.test(token)) {
+      Alert.alert('Lien invalide', 'Collez un code ou un lien d’invitation valide.');
+      return;
+    }
+    router.push({ pathname: '/invite/[token]', params: { token } });
   };
 
   return (
@@ -46,13 +59,18 @@ export default function Login() {
         style={styles.input}
       />
 
-      <ThemedTextInput
-        placeholder="Mot de passe"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
+      <View style={styles.passwordContainer}>
+        <ThemedTextInput
+          placeholder="Mot de passe"
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+          style={styles.passwordInput}
+        />
+        <Pressable onPress={() => setShowPassword((visible) => !visible)} accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} hitSlop={10}>
+          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={21} color={colors.textMuted} />
+        </Pressable>
+      </View>
 
       <Pressable
         style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
@@ -79,9 +97,18 @@ export default function Login() {
         <Text style={styles.secondaryText}>Créer mon entreprise</Text>
       </Pressable>
 
-      <Text style={styles.hint}>
-        Vous avez reçu une invitation ? Ouvrez le lien dans votre email.
-      </Text>
+      <Text style={styles.hint}>Vous avez reçu une invitation ?</Text>
+      <ThemedTextInput
+        placeholder="Coller le code ou le lien d’invitation"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={invitationInput}
+        onChangeText={setInvitationInput}
+        style={styles.input}
+      />
+      <Pressable onPress={openInvitation} style={styles.invitationButton}>
+        <Text style={styles.invitationLink}>J'ai un code / lien d'invitation</Text>
+      </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -120,6 +147,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textDark,
   },
+  passwordContainer: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: { flex: 1, height: 52, fontSize: 16, color: colors.textDark, paddingRight: 10 },
+  invitationButton: { alignItems: 'center', paddingVertical: 8 },
+  invitationLink: { color: colors.primary, fontSize: 14, fontWeight: '600' },
   primaryButton: {
     height: 56,
     borderRadius: 999,

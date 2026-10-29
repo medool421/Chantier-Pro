@@ -23,7 +23,8 @@ const ROLE_LABELS = {
 };
 
 export default function InviteRegister() {
-  const { token } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const token = Array.isArray(params.token) ? params.token[0] : params.token;
 
   const registerInvited = useAuthStore((s) => s.registerInvited);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -35,7 +36,8 @@ export default function InviteRegister() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Validate token on mount
   useEffect(() => {
@@ -49,7 +51,6 @@ export default function InviteRegister() {
       try {
         const res = await invitationsService.validate(token);
         setInviteData(res.data);
-        setEmail(res.data.email);
       } catch (err) {
         const msg =
           err.response?.data?.message ||
@@ -62,7 +63,7 @@ export default function InviteRegister() {
   }, [token]);
 
   const handleRegister = async () => {
-    if (!firstName || !lastName || !password) {
+    if (!firstName.trim() || !lastName.trim() || !password) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs correctement.');
       return;
     }
@@ -70,11 +71,11 @@ export default function InviteRegister() {
     try {
       // Do NOT send email — backend derives it from the invitation token
       await registerInvited({
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         password,
         inviteToken: token,
-        ...(process.env.NODE_ENV === 'development' && { email }),
+        phone: phone.trim(),
       });
 
       router.replace('/');
@@ -143,21 +144,14 @@ export default function InviteRegister() {
         Finalisez votre inscription pour rejoindre l'équipe
       </Text>
 
-      {process.env.NODE_ENV === 'development' ? (
-  <ThemedTextInput
-    placeholder="Email"
-    value={email}
-    onChangeText={setEmail}
-    style={styles.input}
-  />
-) : (
+      <Text style={styles.fieldLabel}>Email <Text style={styles.required}>*</Text></Text>
   <View style={styles.lockedInput}>
     <Ionicons name="mail-outline" size={18} color={colors.textMuted} />
     <Text style={styles.lockedText}>{inviteData.email}</Text>
     <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} />
   </View>
-)}
 
+      <Text style={styles.fieldLabel}>Prénom <Text style={styles.required}>*</Text></Text>
       <ThemedTextInput
         placeholder="Prénom"
         value={firstName}
@@ -165,6 +159,7 @@ export default function InviteRegister() {
         style={styles.input}
       />
 
+      <Text style={styles.fieldLabel}>Nom <Text style={styles.required}>*</Text></Text>
       <ThemedTextInput
         placeholder="Nom"
         value={lastName}
@@ -172,13 +167,15 @@ export default function InviteRegister() {
         style={styles.input}
       />
 
-      <ThemedTextInput
-        placeholder="Mot de passe"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
+      <Text style={styles.fieldLabel}>Mot de passe <Text style={styles.required}>*</Text></Text>
+      <View style={styles.passwordContainer}>
+        <ThemedTextInput placeholder="Mot de passe" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.passwordInput} />
+        <Pressable onPress={() => setShowPassword((visible) => !visible)} accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} hitSlop={10}>
+          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={21} color={colors.textMuted} />
+        </Pressable>
+      </View>
+      <Text style={styles.fieldLabel}>Téléphone</Text>
+      <ThemedTextInput placeholder="Téléphone" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.input} />
 
       <Pressable
         style={[
@@ -280,6 +277,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  fieldLabel: { color: colors.textDark, fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  required: { color: '#dc2626' },
   lockedText: {
     flex: 1,
     color: colors.textMuted,
@@ -291,6 +290,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 14,
   },
+  passwordContainer: { height: 52, borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: 16, marginBottom: 14, flexDirection: 'row', alignItems: 'center' },
+  passwordInput: { flex: 1, height: 52, fontSize: 16, color: colors.textDark, paddingRight: 10 },
   primaryButton: {
     height: 56,
     borderRadius: 999,

@@ -17,6 +17,18 @@ const uploaderInclude = {
   attributes: ['id', 'firstName', 'lastName', 'email', 'role'],
 };
 
+const LEGACY_CATEGORY_MAP = {
+  BEFORE: 'UPDATES',
+  AFTER: 'UPDATES',
+  ISSUE: 'OTHER',
+};
+
+function addDisplayCategory(file) {
+  const type = file.getDataValue('type');
+  file.setDataValue('category', LEGACY_CATEGORY_MAP[type] || type || 'OTHER');
+  return file;
+}
+
 function assertProjectAccess(project, user) {
   if (user.role === 'WORKER') {
     if (!project || !project.companyId || project.companyId !== user.companyId) {
@@ -58,7 +70,7 @@ async function getFileRecord(id, user) {
   }
 
   assertFileProjectAccess(file.project, file.task, user);
-  return file;
+  return addDisplayCategory(file);
 }
 
 async function uploadFile(data, file, user) {
@@ -123,11 +135,12 @@ async function uploadFile(data, file, user) {
 async function getProjectFiles(projectId, user) {
   await findAuthorizedProject(projectId, user);
 
-  return File.findAll({
+  const files = await File.findAll({
     where: { projectId },
     include: [uploaderInclude],
     order: [['createdAt', 'DESC']],
   });
+  return files.map(addDisplayCategory);
 }
 
 async function getFileById(id, user) {

@@ -19,10 +19,12 @@ export default function ManagerTeam() {
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [createdTeamId, setCreatedTeamId] = React.useState(null);
   const { data: teamData, isLoading, isError, refetch } = useProjectTeam(projectId);
-  const { data: workersPool = [], isLoading: loadingWorkers } = useCompanyWorkers();
+  const { data: workersPool = [], isLoading: loadingWorkers, refetch: refetchWorkers } = useCompanyWorkers();
   const createTeamMutation = useCreateProjectTeam(projectId);
   const addMemberMutation = useAddTeamMember(projectId);
   const removeMemberMutation = useRemoveTeamMember(projectId);
+  const [selectedWorkerIds, setSelectedWorkerIds] = React.useState([]);
+  const [isAddingSelected, setIsAddingSelected] = React.useState(false);
 
   const teamObj = Array.isArray(teamData) ? teamData[0] : teamData;
   const workers = teamObj?.members || [];
@@ -37,6 +39,44 @@ export default function ManagerTeam() {
     () => workersPool.filter((worker) => !workerUserIds.has(worker.id)),
     [workersPool, workerUserIds]
   );
+
+  const toggleWorker = (workerId) => {
+    setSelectedWorkerIds((current) => current.includes(workerId)
+      ? current.filter((id) => id !== workerId)
+      : [...current, workerId]);
+  };
+
+  const addSelectedWorkers = async () => {
+    const selectedWorkers = availableWorkers.filter((worker) => selectedWorkerIds.includes(worker.id));
+    if (!teamId || selectedWorkers.length === 0 || isAddingSelected) return;
+
+    setIsAddingSelected(true);
+    try {
+      const results = await Promise.allSettled(selectedWorkers.map((worker) =>
+        addMemberMutation.mutateAsync({ teamId, userId: worker.id, roleInTeam: 'WORKER' })
+      ));
+      const failedIds = results.flatMap((result, index) => result.status === 'rejected' ? [selectedWorkers[index].id] : []);
+      const addedCount = results.length - failedIds.length;
+      await Promise.all([refetch(), refetchWorkers()]);
+
+      if (failedIds.length === 0) {
+        setPickerOpen(false);
+        setSelectedWorkerIds([]);
+        Alert.alert('Succès', `${addedCount} ouvrier${addedCount === 1 ? '' : 's'} ajouté${addedCount === 1 ? '' : 's'} à l'équipe.`);
+      } else {
+        setSelectedWorkerIds(failedIds);
+        const firstError = results.find((result) => result.status === 'rejected')?.reason;
+        Alert.alert(
+          'Ajout partiel',
+          `${addedCount} ouvrier${addedCount === 1 ? '' : 's'} ajouté${addedCount === 1 ? '' : 's'}. ${firstError?.response?.data?.message || 'Certains ouvriers n’ont pas pu être ajoutés.'}`
+        );
+      }
+    } catch (error) {
+      Alert.alert('Erreur', error?.response?.data?.message || 'Impossible d’ajouter les ouvriers sélectionnés.');
+    } finally {
+      setIsAddingSelected(false);
+    }
+  };
 
   const renderWorker = ({ item }) => {
     const user = item.user;
@@ -158,6 +198,7 @@ export default function ManagerTeam() {
               return;
             }
           }
+          setSelectedWorkerIds([]);
           setPickerOpen(true);
         }}
         disabled={loadingWorkers || addMemberMutation.isPending || createTeamMutation.isPending}
@@ -197,6 +238,7 @@ export default function ManagerTeam() {
             <FlatList
               data={availableWorkers}
               keyExtractor={(item) => item.id}
+              style={styles.workerList}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>Tous les ouvriers de l'entreprise sont deja dans l'equipe.</Text>
@@ -204,20 +246,9 @@ export default function ManagerTeam() {
               }
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.workerCard}
-                  disabled={addMemberMutation.isPending}
-                  onPress={async () => {
-                    try {
-                      await addMemberMutation.mutateAsync({
-                        teamId,
-                        userId: item.id,
-                        roleInTeam: 'WORKER',
-                      });
-                      setPickerOpen(false);
-                    } catch (error) {
-                      Alert.alert('Erreur', error?.response?.data?.message || 'Impossible d\'ajouter ce membre');
-                    }
-                  }}
+                  style={[styles.workerCard, styles.pickerWorkerCard, selectedWorkerIds.includes(item.id) && styles.selectedWorkerCard]}
+                  disabled={isAddingSelected}
+                  onPress={() => toggleWorker(item.id)}
                 >
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>{item.firstName?.[0]}{item.lastName?.[0]}</Text>
@@ -226,10 +257,23 @@ export default function ManagerTeam() {
                     <Text style={styles.workerName}>{item.firstName} {item.lastName}</Text>
                     <Text style={styles.workerEmail}>{item.email}</Text>
                   </View>
-                  <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                  <Ionicons
+                    name={selectedWorkerIds.includes(item.id) ? 'checkbox' : 'square-outline'}
+                    size={24}
+                    color={selectedWorkerIds.includes(item.id) ? colors.primary : colors.textMuted}
+                  />
                 </TouchableOpacity>
               )}
             />
+            <TouchableOpacity
+              style={[styles.confirmAddButton, (selectedWorkerIds.length === 0 || isAddingSelected) && styles.disabledButton]}
+              onPress={addSelectedWorkers}
+              disabled={selectedWorkerIds.length === 0 || isAddingSelected}
+            >
+              {isAddingSelected ? <ActivityIndicator color="#fff" /> : (
+                <Text style={styles.confirmAddText}>Ajouter les ouvriers sélectionnés ({selectedWorkerIds.length})</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -265,7 +309,13 @@ const styles = StyleSheet.create({
   retryText: { color: '#fff', fontWeight: '600' },
   removeBtn: { marginLeft: 12, padding: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, maxHeight: '75%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, height: '75%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: colors.textDark },
+  workerList: { flex: 1, minHeight: 0 },
+  pickerWorkerCard: { backgroundColor: '#F8F8F8', marginBottom: 8 },
+  selectedWorkerCard: { backgroundColor: colors.primaryLight },
+  confirmAddButton: { backgroundColor: colors.primary, borderRadius: 10, minHeight: 50, marginTop: 12, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  confirmAddText: { color: '#fff', fontWeight: '700', textAlign: 'center' },
+  disabledButton: { opacity: 0.55 },
 });
