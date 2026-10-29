@@ -16,7 +16,7 @@ const File = sequelize.define('File', {
   uploadedBy: { type: DataTypes.UUID, allowNull: false },
 
   type: {
-    type: DataTypes.ENUM('BEFORE', 'AFTER', 'ISSUE'),
+    type: DataTypes.ENUM('BEFORE', 'AFTER', 'ISSUE', 'PLANS', 'UPDATES', 'NORMS', 'OTHER'),
     allowNull: false,
   },
 

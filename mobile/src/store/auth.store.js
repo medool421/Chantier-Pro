@@ -28,7 +28,7 @@ export const useAuthStore = create((set) => ({
   login: async (email, password) => {
     set({ isLoading: true });
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email: email.trim().toLowerCase(), password });
       const { token, user } = res.data.data;
       await SecureStore.setItemAsync('accessToken', token);
       set({ user, isAuthenticated: true, isLoading: false });
@@ -41,14 +41,15 @@ export const useAuthStore = create((set) => ({
   },
 
   // BOSS self-registration — creates company atomically
-  registerBoss: async ({ firstName, lastName, email, password, companyName }) => {
+  registerBoss: async ({ firstName, lastName, email, password, phone, companyName }) => {
     set({ isLoading: true });
     try {
       const res = await api.post('/auth/register-boss', {
         firstName,
         lastName,
-        email,
+        email: email.trim().toLowerCase(),
         password,
+        phone,
         companyName,
       });
       const { token, user } = res.data.data;
@@ -65,15 +66,15 @@ export const useAuthStore = create((set) => ({
   // Invited user registration (MANAGER or WORKER)
   // Backend derives email, role, companyId from the invitation token
   // Frontend only sends: firstName, lastName, password, inviteToken
-  registerInvited: async ({ firstName, lastName, password, inviteToken, email }) => {
+  registerInvited: async ({ firstName, lastName, password, inviteToken, phone }) => {
     set({ isLoading: true });
     try {
-      const res = await api.post('/auth/register', {
+      const res = await api.post('/invitations/register', {
         firstName,
         lastName,
         password,
         inviteToken,
-        ...(email && { email }),
+        phone,
       });
       const { token, user } = res.data.data;
       await SecureStore.setItemAsync('accessToken', token);

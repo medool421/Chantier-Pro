@@ -19,6 +19,7 @@ const testRoutes = require('./routes/test.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const invitationRoutes = require('./routes/invitation.routes');
 const taskUpdateRoutes = require('./routes/taskUpdate.routes');
+const userRoutes = require('./routes/user.routes');
 
 
 // Middlewares
@@ -38,6 +39,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
    ROUTES
 ====================== */
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', reportRoutes);

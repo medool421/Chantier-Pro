@@ -4,9 +4,9 @@ const Joi = require('joi');
 exports.registerBossSchema = Joi.object({
   firstName: Joi.string().trim().min(2).required(),
   lastName: Joi.string().trim().min(2).required(),
-  email: Joi.string().email().required(),
+  email: Joi.string().trim().lowercase().email().required(),
   password: Joi.string().min(6).required(),
-  phone: Joi.string().optional(),
+  phone: Joi.string().trim().allow('').optional(),
   companyName: Joi.string().trim().min(2).required(),
 });
 
@@ -17,10 +17,11 @@ exports.registerSchema = Joi.object({
   firstName: Joi.string().trim().min(2).required(),
   lastName: Joi.string().trim().min(2).required(),
   password: Joi.string().min(6).required(),
+  phone: Joi.string().trim().allow('').optional(),
   inviteToken: Joi.string().required(),
 });
 
 exports.loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: Joi.string().trim().lowercase().email().required(),
   password: Joi.string().required(),
 });

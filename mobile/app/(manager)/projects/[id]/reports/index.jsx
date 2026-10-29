@@ -96,8 +96,13 @@ export default function ManagerReports() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="documents-outline" size={64} color={colors.textMuted} />
-            <Text style={styles.emptyText}>Aucun rapport envoyé pour le moment.</Text>
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="documents-outline" size={30} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>Aucun rapport pour le moment</Text>
+              <Text style={styles.emptyDescription}>Les rapports disponibles apparaîtront ici.</Text>
+            </View>
           </View>
         }
       />
@@ -112,7 +117,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.textDark },
   addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
   addButtonText: { color: '#fff', fontWeight: '600', marginLeft: 4 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 24, flexGrow: 1 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   iconContainer: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
@@ -121,8 +126,12 @@ const styles = StyleSheet.create({
   typeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   typeText: { fontSize: 10, fontWeight: '800' },
   content: { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
-  emptyContainer: { alignItems: 'center', marginTop: 60 },
-  emptyText: { color: colors.textMuted, marginTop: 16, textAlign: 'center', paddingHorizontal: 40 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyCard: { width: '100%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  emptyIconContainer: { width: 60, height: 60, borderRadius: 16, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  emptyTitle: { color: colors.textDark, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  emptyDescription: { color: colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  emptyText: { color: colors.textMuted, textAlign: 'center' },
   retryButton: { marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
   retryButtonText: { color: '#fff', fontWeight: '600' },
 });

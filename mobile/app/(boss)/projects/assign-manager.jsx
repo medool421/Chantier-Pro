@@ -120,13 +120,6 @@ export default function AssignManager() {
       )}
 
       <View style={styles.footer}>
-        {selectedManager && (
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionText}>
-              Sélectionné: {selectedManager.firstName} {selectedManager.lastName}
-            </Text>
-          </View>
-        )}
         <TouchableOpacity
           style={[styles.button, (!selectedManager || assignMutation.isPending) && styles.disabledButton]}
           onPress={handleAssign}
@@ -170,8 +163,6 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center', color: colors.textMuted, marginTop: 16, fontSize: 16 },
   retryButton: { marginTop: 16, backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12 },
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f0f0f0', padding: 16 },
-  selectionInfo: { backgroundColor: colors.primaryLight, padding: 12, borderRadius: 8, marginBottom: 12 },
-  selectionText: { color: colors.primary, fontWeight: '600', textAlign: 'center' },
   button: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
   disabledButton: { opacity: 0.6 },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },

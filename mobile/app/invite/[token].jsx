@@ -15,7 +15,8 @@ import { colors } from '../../src/theme/colors';
  * can always reach it).
  */
 export default function InviteDeepLink() {
-  const { token } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const token = Array.isArray(params.token) ? params.token[0] : params.token;
 
   useEffect(() => {
     if (token) {
