@@ -17,7 +17,7 @@ const {
  *   description: Project reports
  */
 
-router.use(auth);
+router.use(['/projects/:projectId/reports', '/reports'], auth);
 
 /**
  * @swagger

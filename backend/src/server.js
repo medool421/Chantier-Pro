@@ -39,15 +39,15 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
    ROUTES
 ====================== */
 app.use('/api/auth', authRoutes);
+app.use('/api/invitations', invitationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
-app.use('/api', taskRoutes);
-app.use('/api', reportRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/invitations', invitationRoutes);
+app.use('/api', taskRoutes);
+app.use('/api', reportRoutes);
 app.use('/api', taskUpdateRoutes);
 
 

@@ -19,7 +19,7 @@ const {
  *   description: Task management
  */
 
-router.use(auth);
+router.use(['/projects/:projectId/tasks', '/tasks'], auth);
 
 /**
  * @swagger
