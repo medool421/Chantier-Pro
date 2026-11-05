@@ -93,6 +93,12 @@ router.post(
   authController.register
 );
 
+router.post(
+  '/register-invited',
+  validate(registerSchema),
+  authController.register
+);
+
 /**
  * @swagger
  * /api/auth/login:

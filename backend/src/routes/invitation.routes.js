@@ -35,9 +35,12 @@ const role = require('../middlewares/role.middleware');
  *         description: Token not found
  */
 router.get('/validate/:token', invitationController.validateToken);
+router.get('/verify/:token', invitationController.validateToken);
+router.get('/:token([a-zA-Z0-9_-]{10,})', invitationController.validateToken);
 
 // Public registration: the invitation token supplies the email, role and company.
 router.post('/register', invitationController.registerInvitedUser);
+router.post('/register-invited', invitationController.registerInvitedUser);
 
 // ─── Protected (auth required) ────────────────────────────────────────────
 router.use(auth);

@@ -23,7 +23,7 @@ const upload = multer({
   },
 });
 
-router.use(auth);
+router.use('/task-updates', auth);
 
 router.post(
   '/task-updates',
