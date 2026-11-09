@@ -13,6 +13,7 @@ const Report = sequelize.define('Report', {
   content: { type: DataTypes.TEXT },
 
   reportDate: { type: DataTypes.DATEONLY, allowNull: false },
+  imageUrl: { type: DataTypes.TEXT, allowNull: true },
 }, {
   tableName: 'reports',
   timestamps: true,
