@@ -12,7 +12,7 @@ import {
 import { useState, useEffect } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
-import { invitationsService } from '../../src/api/invitations.service';
+import { invitationsService, extractInvitationToken } from '../../src/api/invitations.service';
 import { colors } from '../../src/theme/colors';
 import ThemedTextInput from '../../src/components/ThemedTextInput';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +24,9 @@ const ROLE_LABELS = {
 
 export default function InviteRegister() {
   const params = useLocalSearchParams();
-  const token = Array.isArray(params.token) ? params.token[0] : params.token;
+  const rawParam = params.token || params.inviteToken || params.code;
+  const rawValue = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+  const token = extractInvitationToken(rawValue);
 
   const registerInvited = useAuthStore((s) => s.registerInvited);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -47,19 +49,24 @@ export default function InviteRegister() {
       return;
     }
 
+    let isMounted = true;
     (async () => {
       try {
         const res = await invitationsService.validate(token);
-        setInviteData(res.data);
+        if (isMounted) setInviteData(res.data);
       } catch (err) {
+        if (!isMounted) return;
         const msg =
           err.response?.data?.message ||
+          err.message ||
           "Ce lien d'invitation est invalide ou a expiré.";
         setTokenError(msg);
       } finally {
-        setIsValidating(false);
+        if (isMounted) setIsValidating(false);
       }
     })();
+
+    return () => { isMounted = false; };
   }, [token]);
 
   const handleRegister = async () => {
@@ -108,7 +115,7 @@ export default function InviteRegister() {
         <Text style={styles.errorTitle}>Invitation invalide</Text>
         <Text style={styles.errorText}>{tokenError}</Text>
         <Pressable
-          style={styles.primaryButton}
+          style={styles.errorButton}
           onPress={() => router.replace('/(auth)/login')}
         >
           <Text style={styles.primaryText}>Se connecter</Text>
@@ -298,6 +305,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 10,
+  },
+  errorButton: {
+    minHeight: 50,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    minWidth: 160,
     marginTop: 10,
   },
   primaryButtonDisabled: {

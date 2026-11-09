@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { colors } from '../../src/theme/colors';
+import { extractInvitationToken } from '../../src/api/invitations.service';
 
 /**
  * Deep link handler for: chantierpro://invite/:token
@@ -16,15 +17,18 @@ import { colors } from '../../src/theme/colors';
  */
 export default function InviteDeepLink() {
   const params = useLocalSearchParams();
-  const token = Array.isArray(params.token) ? params.token[0] : params.token;
+  const rawParam = params.token || params.inviteToken || params.code;
+  const rawValue = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+  const token = extractInvitationToken(rawValue) || (typeof rawValue === 'string' ? rawValue.trim() : '');
 
   useEffect(() => {
     if (token) {
-      // Forward to the registration screen, passing the token as a param
       router.replace({
         pathname: '/(auth)/invite-register',
         params: { token },
       });
+    } else {
+      router.replace('/(auth)/login');
     }
   }, [token]);
 
