@@ -25,12 +25,23 @@ export default function BossHome() {
     <TouchableOpacity
       style={styles.projectCard}
       onPress={() => router.push(`/(boss)/projects/${item.id}`)}
+      activeOpacity={0.7}
     >
       <View style={styles.projectHeader}>
-        <Text style={styles.projectTitle}>{item.name}</Text>
+        <Text
+          style={styles.projectTitle}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {item.name}
+        </Text>
         <StatusBadge status={item.status} />
       </View>
-      <Text style={styles.projectDescription} numberOfLines={2}>
+      <Text
+        style={styles.projectDescription}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >
         {item.description || 'Aucune description'}
       </Text>
       <View style={styles.progressRow}>
@@ -42,7 +53,13 @@ export default function BossHome() {
       <View style={styles.projectFooter}>
         <View style={styles.locationContainer}>
           <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.locationText}>{item.address || 'N/A'}</Text>
+          <Text
+            style={styles.locationText}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {item.address || 'N/A'}
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </View>
@@ -57,20 +74,20 @@ export default function BossHome() {
           <Text style={styles.greeting}>Bonjour,</Text>
           <Text style={styles.username}>{user?.firstName || 'Boss'}</Text>
         </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <TouchableOpacity
-          onPress={() => router.push('/(boss)/invitations')}
-        >
-          <Ionicons name="mail-outline" size={28} color={colors.textDark} />
-        </TouchableOpacity>
-        <NotificationBell />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/(boss)/invitations')}
+          >
+            <Ionicons name="mail-outline" size={28} color={colors.textDark} />
+          </TouchableOpacity>
+          <NotificationBell />
           <TouchableOpacity
             style={styles.profileButton}
             onPress={() => router.push('/(boss)/profile')}
           >
             <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
           </TouchableOpacity>
-     </View>
+        </View>
       </View>
 
       {/* Section header */}
@@ -85,30 +102,42 @@ export default function BossHome() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-        {[
-          { value: 'ALL', label: 'Toutes' },
-          { value: 'PLANNED', label: 'Planifiés' },
-          { value: 'IN_PROGRESS', label: 'En cours' },
-          { value: 'COMPLETED', label: 'Terminés' },
-        ].map((status) => (
-          <TouchableOpacity
-            key={status.value}
-            style={[styles.filterChip, selectedStatus === status.value && styles.filterChipActive]}
-            onPress={() => setSelectedStatus(status.value)}
-          >
-            <Text style={[styles.filterText, selectedStatus === status.value && styles.filterTextActive]}>
-              {status.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Filter Tabs */}
+      <View style={styles.filterWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {[
+            { value: 'ALL', label: 'Toutes' },
+            { value: 'PLANNED', label: 'Planifiés' },
+            { value: 'IN_PROGRESS', label: 'En cours' },
+            { value: 'COMPLETED', label: 'Terminés' },
+          ].map((status) => (
+            <TouchableOpacity
+              key={status.value}
+              style={[styles.filterChip, selectedStatus === status.value && styles.filterChipActive]}
+              onPress={() => setSelectedStatus(status.value)}
+              activeOpacity={0.7}
+            >
+              <Text
+                numberOfLines={1}
+                style={[styles.filterText, selectedStatus === status.value && styles.filterTextActive]}
+              >
+                {status.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <FlatList
         data={filteredProjects}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderProjectItem}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -120,11 +149,10 @@ export default function BossHome() {
           isLoading ? null : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>{selectedStatus === 'ALL' ? 'Aucun chantier.' : 'Aucun chantier pour ce statut.'}</Text>
-              
             </View>
           )
         }
-        />
+      />
     </View>
   );
 }
@@ -164,24 +192,63 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.textDark },
   addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
   addButtonText: { color: '#fff', fontWeight: '600', marginLeft: 4 },
-  listContent: { paddingBottom: 24 },
-  projectCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  projectHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  projectTitle: { fontSize: 18, fontWeight: '600', color: colors.textDark, flex: 1 },
-  projectDescription: { fontSize: 14, color: colors.textMuted, marginBottom: 12 },
-  filterContainer: { gap: 8, paddingBottom: 14 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0E0E0' },
+  filterWrapper: { marginHorizontal: -20, marginBottom: 12 },
+  filterContainer: { paddingHorizontal: 20, gap: 8, paddingVertical: 4 },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minHeight: 36,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  filterText: { color: colors.textMuted, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   filterTextActive: { color: '#fff' },
+  listContent: { paddingBottom: 32 },
+  projectCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  projectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  projectTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textDark,
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
+    lineHeight: 24,
+  },
+  projectDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
+    marginBottom: 12,
+  },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   progressBar: { flex: 1, height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
   progressText: { minWidth: 34, fontSize: 12, textAlign: 'right', color: colors.textMuted },
   projectFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 12 },
-  locationContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 },
+  locationContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 8 },
   locationText: { flex: 1, fontSize: 14, color: colors.textMuted, marginLeft: 4 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexShrink: 0 },
   badgeText: { fontSize: 12, fontWeight: '600' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },
   emptyText: { color: colors.textMuted, fontSize: 16 },

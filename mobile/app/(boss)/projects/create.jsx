@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import {
-  View, Text, StyleSheet,
-  TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { HeaderHeightContext } from '@react-navigation/elements';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../../../src/theme/colors';
 import ThemedTextInput from '../../../src/components/ThemedTextInput';
@@ -28,8 +36,14 @@ function formatDateValue(date) {
 
 export default function CreateProject() {
   const router = useRouter();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const createMutation = useCreateProject();
   const [activeDatePicker, setActiveDatePicker] = useState(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const scrollViewRef = useRef(null);
+  const fieldLayouts = useRef({});
+  const focusedFieldRef = useRef(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -39,6 +53,54 @@ export default function CreateProject() {
     endDate: '',
     budget: '',
   });
+
+  const scrollToField = useCallback((fieldKey) => {
+    const y = fieldLayouts.current[fieldKey];
+    if (typeof y === 'number' && scrollViewRef.current) {
+      // Offset so the label is comfortably visible
+      const targetY = Math.max(0, y - 16);
+      scrollViewRef.current.scrollTo({ y: targetY, animated: true });
+    }
+  }, []);
+
+  const handleFocus = useCallback((fieldKey) => {
+    focusedFieldRef.current = fieldKey;
+    scrollToField(fieldKey);
+  }, [scrollToField]);
+
+  const handleBlur = useCallback((fieldKey) => {
+    if (focusedFieldRef.current === fieldKey) {
+      focusedFieldRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const onKeyboardShow = (e) => {
+      const height = e.endCoordinates ? e.endCoordinates.height : 0;
+      setKeyboardHeight(height);
+      if (focusedFieldRef.current) {
+        scrollToField(focusedFieldRef.current);
+      }
+    };
+
+    const onKeyboardHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      onKeyboardShow
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      onKeyboardHide
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [scrollToField]);
 
   const handleChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -63,42 +125,117 @@ export default function CreateProject() {
     });
   };
 
+  const dynamicPaddingBottom = Platform.select({
+    android: keyboardHeight > 0 ? Math.max(keyboardHeight, 160) : 48,
+    ios: keyboardHeight > 0 ? 32 : 48,
+  });
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      style={styles.container}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: dynamicPaddingBottom },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.headerTitle}>Nouveau Chantier</Text>
         <Text style={styles.headerSubtitle}>Entrez les détails du nouveau projet.</Text>
 
-        <View style={styles.formGroup}>
+        <View
+          style={styles.formGroup}
+          onLayout={(e) => {
+            fieldLayouts.current.name = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.label}>Nom du chantier *</Text>
-          <ThemedTextInput style={styles.input} placeholder="Ex: Rénovation Villa H" value={form.name} onChangeText={(t) => handleChange('name', t)} />
+          <ThemedTextInput
+            style={styles.input}
+            placeholder="Ex: Rénovation Villa H"
+            value={form.name}
+            onChangeText={(t) => handleChange('name', t)}
+            onFocus={() => handleFocus('name')}
+            onBlur={() => handleBlur('name')}
+            returnKeyType="next"
+          />
         </View>
 
-        <View style={styles.formGroup}>
+        <View
+          style={styles.formGroup}
+          onLayout={(e) => {
+            fieldLayouts.current.address = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.label}>Lieu *</Text>
-          <ThemedTextInput style={styles.input} placeholder="Ex: 12 Rue de la Paix, Paris" value={form.address} onChangeText={(t) => handleChange('address', t)} />
+          <ThemedTextInput
+            style={styles.input}
+            placeholder="Ex: 12 Rue de la Paix, Paris"
+            value={form.address}
+            onChangeText={(t) => handleChange('address', t)}
+            onFocus={() => handleFocus('address')}
+            onBlur={() => handleBlur('address')}
+            returnKeyType="next"
+          />
         </View>
 
-        <View style={styles.formGroup}>
+        <View
+          style={styles.formGroup}
+          onLayout={(e) => {
+            fieldLayouts.current.description = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.label}>Description</Text>
-          <ThemedTextInput style={[styles.input, styles.textArea]} placeholder="Détails des travaux..." value={form.description} onChangeText={(t) => handleChange('description', t)} multiline numberOfLines={4} />
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Détails des travaux..."
+            value={form.description}
+            onChangeText={(t) => handleChange('description', t)}
+            onFocus={() => handleFocus('description')}
+            onBlur={() => handleBlur('description')}
+            multiline
+            numberOfLines={4}
+          />
         </View>
 
-        <View style={styles.formGroup}>
+        <View
+          style={styles.formGroup}
+          onLayout={(e) => {
+            fieldLayouts.current.budget = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.label}>Budget prévisionnel (DH)</Text>
           <ThemedTextInput
             style={styles.input}
             placeholder="ex: 250000"
             value={form.budget}
             onChangeText={(value) => handleChange('budget', value)}
+            onFocus={() => handleFocus('budget')}
+            onBlur={() => handleBlur('budget')}
             keyboardType="decimal-pad"
+            returnKeyType="done"
           />
         </View>
-        <View style={styles.formGroup}>
+
+        <View
+          style={styles.formGroup}
+          onLayout={(e) => {
+            fieldLayouts.current.startDate = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.label}>Date de début (YYYY-MM-DD)</Text>
           <TouchableOpacity
             style={styles.input}
-            onPress={() => setActiveDatePicker('startDate')}
+            onPress={() => {
+              Keyboard.dismiss();
+              setActiveDatePicker('startDate');
+            }}
             accessibilityRole="button"
             accessibilityLabel="Choisir la date de début"
           >
@@ -126,11 +263,19 @@ export default function CreateProject() {
           )}
         </View>
 
-        <View style={styles.formGroup}>
+        <View
+          style={styles.formGroup}
+          onLayout={(e) => {
+            fieldLayouts.current.endDate = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.label}>Date de fin (facultative)</Text>
           <TouchableOpacity
             style={styles.input}
-            onPress={() => setActiveDatePicker('endDate')}
+            onPress={() => {
+              Keyboard.dismiss();
+              setActiveDatePicker('endDate');
+            }}
             accessibilityRole="button"
             accessibilityLabel="Choisir la date de fin"
           >
@@ -158,6 +303,7 @@ export default function CreateProject() {
             />
           )}
         </View>
+
         <TouchableOpacity
           style={[styles.submitButton, createMutation.isPending && styles.disabledButton]}
           onPress={handleSubmit}
@@ -174,7 +320,7 @@ export default function CreateProject() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { padding: 24, paddingBottom: 48 },
+  scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 48 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: colors.textDark, marginBottom: 8 },
   headerSubtitle: { fontSize: 16, color: colors.textMuted, marginBottom: 32 },
   formGroup: { marginBottom: 20 },

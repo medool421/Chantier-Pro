@@ -6,6 +6,7 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../src/theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useProjectTeam,
   useCompanyWorkers,
@@ -15,6 +16,7 @@ import {
 } from '../../../../src/hooks/useProjects';
 
 export default function BossProjectTeam() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const projectId = Array.isArray(id) ? id[0] : id;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -232,7 +234,7 @@ export default function BossProjectTeam() {
 
       <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Ajouter un ouvrier</Text>
               <TouchableOpacity onPress={() => setPickerOpen(false)}>

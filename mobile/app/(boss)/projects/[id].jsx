@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Modal, RefreshControl, KeyboardAvoidingView, Platform,
+  Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import {
   useUpdateProjectStatus,
   useDeleteProject,
 } from '../../../src/hooks/useProjects';
+import { useKeyboardAwareModal } from '../../../src/hooks/useKeyboardAwareModal';
 
 function parseDateValue(value) {
   if (!value) return new Date();
@@ -44,13 +46,38 @@ export default function ProjectDetails() {
   const [editForm, setEditForm] = useState({});
   const [activeDatePicker, setActiveDatePicker] = useState(null);
 
+  const editModalKeyboard = useKeyboardAwareModal({
+    isVisible: editModalVisible,
+    minHeight: 260,
+    bottomSheetRatio: 0.85,
+  });
+
   // ─── Queries ───────────────────────────────────────────────────────────────
   const { data: project, isLoading, isRefetching, refetch } = useProject(id);
 
   // Pre-fill edit form when project loads (only once)
   React.useEffect(() => {
-    if (project) setEditForm(project);
+    if (project) {
+      setEditForm({
+        ...project,
+        budget: project.budget == null ? '' : String(project.budget),
+      });
+    }
   }, [project?.id]);
+
+  const closeEditModal = useCallback(() => {
+    editModalKeyboard.dismissAndReset(() => setEditModalVisible(false));
+  }, [editModalKeyboard]);
+
+  const openEditModal = useCallback(() => {
+    if (project) {
+      setEditForm({
+        ...project,
+        budget: project.budget == null ? '' : String(project.budget),
+      });
+    }
+    setEditModalVisible(true);
+  }, [project]);
 
   // ─── Mutations ─────────────────────────────────────────────────────────────
   const updateStatusMutation = useUpdateProjectStatus(id);
@@ -80,7 +107,7 @@ export default function ProjectDetails() {
       },
       {
         onSuccess: () => {
-          setEditModalVisible(false);
+          closeEditModal();
           Alert.alert('Succès', 'Projet mis à jour');
         },
         onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour le projet'),
@@ -145,7 +172,7 @@ export default function ProjectDetails() {
         <View style={styles.card}>
           <View style={styles.headerRow}>
             <Text style={styles.projectTitle}>{project.name}</Text>
-            <TouchableOpacity onPress={() => setEditModalVisible(true)}>
+            <TouchableOpacity onPress={openEditModal}>
               <Ionicons name="create-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
@@ -306,7 +333,7 @@ export default function ProjectDetails() {
         onRequestClose={() => setStatusModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
             <Text style={styles.modalTitle}>Changer le statut</Text>
 
             {Object.entries(PROJECT_STATUS).map(([key, value]) => (
@@ -339,128 +366,180 @@ export default function ProjectDetails() {
         visible={editModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setEditModalVisible(false)}
+        onRequestClose={closeEditModal}
       >
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboard}>
-            <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              contentContainerStyle={styles.editModalScrollContent}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[
+              styles.modalKeyboard,
+              editModalKeyboard.modalKeyboardStyle,
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  maxHeight: editModalKeyboard.availableModalHeight,
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                },
+              ]}
             >
-              <Text style={styles.modalTitle}>Modifier le projet</Text>
+              <ScrollView
+                {...editModalKeyboard.getScrollViewProps()}
+                style={styles.editModalScrollView}
+                contentContainerStyle={styles.editModalScrollContent}
+              >
+                <Text style={styles.modalTitle}>Modifier le projet</Text>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Nom</Text>
-                <ThemedTextInput
-                  style={styles.input}
-                  value={editForm.name}
-                  onChangeText={(t) => setEditForm({ ...editForm, name: t })}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Description</Text>
-                <ThemedTextInput
-                  style={[styles.input, styles.textArea]}
-                  value={editForm.description}
-                  onChangeText={(t) => setEditForm({ ...editForm, description: t })}
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Adresse</Text>
-                <ThemedTextInput
-                  style={styles.input}
-                  value={editForm.address}
-                  onChangeText={(t) => setEditForm({ ...editForm, address: t })}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Budget (DH)</Text>
-                <ThemedTextInput
-                  style={styles.input}
-                  value={editForm.budget == null ? '' : String(editForm.budget)}
-                  onChangeText={(value) => setEditForm({ ...editForm, budget: value })}
-                  keyboardType="decimal-pad"
-                  placeholder="ex: 250000"
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Date de début</Text>
-                <TouchableOpacity style={styles.input} onPress={() => setActiveDatePicker('startDate')}>
-                  <Text>{editForm.startDate || 'Choisir une date'}</Text>
-                </TouchableOpacity>
-                {activeDatePicker === 'startDate' && (
-                  <DateTimePicker
-                    value={parseDateValue(editForm.startDate)}
-                    mode="date"
-                    display={Platform.OS === 'android' ? 'calendar' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      setActiveDatePicker(null);
-                      if (event.type === 'set' && selectedDate) {
-                        const startDate = formatDateValue(selectedDate);
-                        setEditForm({
-                          ...editForm,
-                          startDate,
-                          endDate: editForm.endDate && editForm.endDate < startDate ? null : editForm.endDate,
-                        });
-                      }
-                    }}
+                <View
+                  style={styles.formGroup}
+                  {...editModalKeyboard.getFieldLayoutProps('name')}
+                >
+                  <Text style={styles.label}>Nom</Text>
+                  <ThemedTextInput
+                    style={styles.input}
+                    value={editForm.name}
+                    onChangeText={(t) => setEditForm({ ...editForm, name: t })}
+                    onFocus={() => editModalKeyboard.handleFieldFocus('name')}
+                    onBlur={() => editModalKeyboard.handleFieldBlur('name')}
                   />
-                )}
-              </View>
+                </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Date de fin (facultative)</Text>
-                <TouchableOpacity style={styles.input} onPress={() => setActiveDatePicker('endDate')}>
-                  <Text>{editForm.endDate || 'Choisir une date'}</Text>
-                </TouchableOpacity>
-                {editForm.endDate ? (
-                  <TouchableOpacity onPress={() => setEditForm({ ...editForm, endDate: null })} style={styles.clearDateButton}>
-                    <Text style={styles.datePlaceholder}>Effacer la date de fin</Text>
+                <View
+                  style={styles.formGroup}
+                  {...editModalKeyboard.getFieldLayoutProps('description')}
+                >
+                  <Text style={styles.label}>Description</Text>
+                  <ThemedTextInput
+                    style={[styles.input, styles.textArea]}
+                    value={editForm.description}
+                    onChangeText={(t) => setEditForm({ ...editForm, description: t })}
+                    multiline
+                    numberOfLines={4}
+                    onFocus={() => editModalKeyboard.handleFieldFocus('description')}
+                    onBlur={() => editModalKeyboard.handleFieldBlur('description')}
+                  />
+                </View>
+
+                <View
+                  style={styles.formGroup}
+                  {...editModalKeyboard.getFieldLayoutProps('address')}
+                >
+                  <Text style={styles.label}>Adresse</Text>
+                  <ThemedTextInput
+                    style={styles.input}
+                    value={editForm.address}
+                    onChangeText={(t) => setEditForm({ ...editForm, address: t })}
+                    onFocus={() => editModalKeyboard.handleFieldFocus('address')}
+                    onBlur={() => editModalKeyboard.handleFieldBlur('address')}
+                  />
+                </View>
+
+                <View
+                  style={styles.formGroup}
+                  {...editModalKeyboard.getFieldLayoutProps('budget')}
+                >
+                  <Text style={styles.label}>Budget (DH)</Text>
+                  <ThemedTextInput
+                    style={styles.input}
+                    value={editForm.budget == null ? '' : String(editForm.budget)}
+                    onChangeText={(value) => setEditForm({ ...editForm, budget: value })}
+                    keyboardType="decimal-pad"
+                    placeholder="ex: 250000"
+                    onFocus={() => editModalKeyboard.handleFieldFocus('budget')}
+                    onBlur={() => editModalKeyboard.handleFieldBlur('budget')}
+                  />
+                </View>
+
+                <View
+                  style={styles.formGroup}
+                  {...editModalKeyboard.getFieldLayoutProps('startDate')}
+                >
+                  <Text style={styles.label}>Date de début</Text>
+                  <TouchableOpacity
+                    style={styles.input}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setActiveDatePicker('startDate');
+                    }}
+                  >
+                    <Text>{editForm.startDate || 'Choisir une date'}</Text>
                   </TouchableOpacity>
-                ) : null}
-                {activeDatePicker === 'endDate' && (
-                  <DateTimePicker
-                    value={parseDateValue(editForm.endDate || editForm.startDate)}
-                    mode="date"
-                    display={Platform.OS === 'android' ? 'calendar' : 'default'}
-                    minimumDate={editForm.startDate ? parseDateValue(editForm.startDate) : undefined}
-                    onChange={(event, selectedDate) => {
-                      setActiveDatePicker(null);
-                      if (event.type === 'set' && selectedDate) {
-                        setEditForm({ ...editForm, endDate: formatDateValue(selectedDate) });
-                      }
+                  {activeDatePicker === 'startDate' && (
+                    <DateTimePicker
+                      value={parseDateValue(editForm.startDate)}
+                      mode="date"
+                      display={Platform.OS === 'android' ? 'calendar' : 'default'}
+                      onChange={(event, selectedDate) => {
+                        setActiveDatePicker(null);
+                        if (event.type === 'set' && selectedDate) {
+                          const startDate = formatDateValue(selectedDate);
+                          setEditForm({
+                            ...editForm,
+                            startDate,
+                            endDate: editForm.endDate && editForm.endDate < startDate ? null : editForm.endDate,
+                          });
+                        }
+                      }}
+                    />
+                  )}
+                </View>
+
+                <View
+                  style={styles.formGroup}
+                  {...editModalKeyboard.getFieldLayoutProps('endDate')}
+                >
+                  <Text style={styles.label}>Date de fin (facultative)</Text>
+                  <TouchableOpacity
+                    style={styles.input}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setActiveDatePicker('endDate');
                     }}
-                  />
-                )}
-              </View>
+                  >
+                    <Text>{editForm.endDate || 'Choisir une date'}</Text>
+                  </TouchableOpacity>
+                  {editForm.endDate ? (
+                    <TouchableOpacity onPress={() => setEditForm({ ...editForm, endDate: null })} style={styles.clearDateButton}>
+                      <Text style={styles.datePlaceholder}>Effacer la date de fin</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {activeDatePicker === 'endDate' && (
+                    <DateTimePicker
+                      value={parseDateValue(editForm.endDate || editForm.startDate)}
+                      mode="date"
+                      display={Platform.OS === 'android' ? 'calendar' : 'default'}
+                      minimumDate={editForm.startDate ? parseDateValue(editForm.startDate) : undefined}
+                      onChange={(event, selectedDate) => {
+                        setActiveDatePicker(null);
+                        if (event.type === 'set' && selectedDate) {
+                          setEditForm({ ...editForm, endDate: formatDateValue(selectedDate) });
+                        }
+                      }}
+                    />
+                  )}
+                </View>
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={() => setEditModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>Annuler</Text>
-                </TouchableOpacity>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={closeEditModal}
+                  >
+                    <Text style={styles.modalCancelText}>Annuler</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.modalSaveButton, updateProjectMutation.isPending && { opacity: 0.7 }]}
-                  onPress={handleUpdateProject}
-                  disabled={updateProjectMutation.isPending}
-                >
-                  <Text style={styles.modalSaveText}>
-                    {updateProjectMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+                  <TouchableOpacity
+                    style={[styles.modalSaveButton, updateProjectMutation.isPending && { opacity: 0.7 }]}
+                    onPress={handleUpdateProject}
+                    disabled={updateProjectMutation.isPending}
+                  >
+                    <Text style={styles.modalSaveText}>
+                      {updateProjectMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -515,8 +594,9 @@ const styles = StyleSheet.create({
   deleteButtonText: { color: colors.error, fontWeight: '600', marginLeft: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalKeyboard: { width: '100%', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
-  editModalScrollContent: { flexGrow: 1 },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  editModalScrollView: { width: '100%' },
+  editModalScrollContent: { flexGrow: 1, paddingBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark, marginBottom: 20 },
   statusOption: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8, backgroundColor: '#F5F5F5' },
   selectedOption: { backgroundColor: colors.primaryLight },

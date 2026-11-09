@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Modal, TextInput, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Modal, TextInput, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { colors } from '../../../src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import api from '../../../src/api/axios';
+import { useKeyboardAwareModal } from '../../../src/hooks/useKeyboardAwareModal';
 
 export default function Profile() {
     const user = useAuthStore((s) => s.user);
@@ -14,6 +15,18 @@ export default function Profile() {
     const [deleteConfirmation, setDeleteConfirmation] = React.useState('');
     const [isDeleting, setIsDeleting] = React.useState(false);
     const canDelete = deleteConfirmation.trim().toUpperCase() === 'SUPPRIMER';
+
+    const deleteModalKeyboard = useKeyboardAwareModal({
+        isVisible: deleteModalVisible,
+    });
+
+    const closeDeleteModal = () => {
+        if (isDeleting) return;
+        deleteModalKeyboard.dismissAndReset(() => {
+            setDeleteModalVisible(false);
+            setDeleteConfirmation('');
+        });
+    };
 
     const handleLogout = () => {
         Alert.alert(
@@ -92,8 +105,11 @@ export default function Profile() {
                 </TouchableOpacity>
             </View>
 
-            <Modal visible={deleteModalVisible} transparent animationType="fade" onRequestClose={() => !isDeleting && setDeleteModalVisible(false)}>
-                <View style={styles.modalBackdrop}>
+            <Modal visible={deleteModalVisible} transparent animationType="fade" onRequestClose={closeDeleteModal}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={[styles.modalBackdrop, deleteModalKeyboard.modalKeyboardStyle]}
+                >
                     <View style={styles.modalCard}>
                         <Ionicons name="warning-outline" size={32} color={colors.error} />
                         <Text style={styles.modalTitle}>Supprimer définitivement votre compte ?</Text>
@@ -110,11 +126,11 @@ export default function Profile() {
                         <TouchableOpacity style={[styles.confirmDeleteButton, (!canDelete || isDeleting) && styles.disabledButton]} onPress={handleDeleteAccount} disabled={!canDelete || isDeleting}>
                             {isDeleting ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmDeleteText}>Supprimer définitivement mon compte</Text>}
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.cancelDeleteButton} onPress={() => { setDeleteModalVisible(false); setDeleteConfirmation(''); }} disabled={isDeleting}>
+                        <TouchableOpacity style={styles.cancelDeleteButton} onPress={closeDeleteModal} disabled={isDeleting}>
                             <Text style={styles.cancelDeleteText}>Annuler</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </ScrollView>
     );

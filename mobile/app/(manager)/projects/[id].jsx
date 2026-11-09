@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../../src/theme/colors';
 import { PROJECT_STATUS, PROJECT_STATUS_LABELS } from '../../../src/utils/constants';
 import { useProject, useUpdateProjectStatus } from '../../../src/hooks/useProjects';
@@ -12,6 +13,7 @@ import { useProject, useUpdateProjectStatus } from '../../../src/hooks/useProjec
 export default function ManagerProjectDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   const { data: project, isLoading } = useProject(id);
@@ -150,7 +152,7 @@ export default function ManagerProjectDetails() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push({ pathname: `/(manager)/projects/${id}/files/files`, params: { id } })}
+            onPress={() => router.push({ pathname: '/(manager)/projects/[id]/files/files', params: { id } })}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="folder-open-outline" size={24} color="#388E3C" />
@@ -167,7 +169,7 @@ export default function ManagerProjectDetails() {
       {/* STATUS MODAL */}
       <Modal visible={statusModalVisible} transparent animationType="slide" onRequestClose={() => setStatusModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
             <Text style={styles.modalTitle}>Changer le statut</Text>
             {Object.entries(PROJECT_STATUS).map(([key, value]) => (
               <TouchableOpacity

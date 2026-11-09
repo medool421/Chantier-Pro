@@ -12,6 +12,7 @@ import { useTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../.
 import { useTaskUpdates } from '../../../../../src/hooks/useTaskUpdates';
 import { useProjectTeam } from '../../../../../src/hooks/useProjects';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardAwareModal } from '../../../../../src/hooks/useKeyboardAwareModal';
 import api from '../../../../../src/api/axios';
 import { filesService } from '../../../../../src/api/files.service';
 import ImagePreviewModal from '../../../../../src/components/ImagePreviewModal';
@@ -37,6 +38,25 @@ export default function ManagerTaskDetail() {
   const [assigneeModalVisible, setAssigneeModalVisible] = useState(false);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [editForm, setEditForm] = useState({});
+
+  const editModalKeyboard = useKeyboardAwareModal({
+    isVisible: editModalVisible,
+  });
+
+  const assigneeModalKeyboard = useKeyboardAwareModal({
+    isVisible: assigneeModalVisible,
+  });
+
+  const closeEditModal = useCallback(() => {
+    editModalKeyboard.dismissAndReset(() => setEditModalVisible(false));
+  }, [editModalKeyboard]);
+
+  const closeAssigneeModal = useCallback(() => {
+    assigneeModalKeyboard.dismissAndReset(() => {
+      setAssigneeModalVisible(false);
+      setAssigneeSearchQuery('');
+    });
+  }, [assigneeModalKeyboard]);
 
   // ─── Queries ─────────────────────────────────────────────────────────────
   const { data: task, isLoading } = useTask(taskId);
@@ -97,7 +117,7 @@ export default function ManagerTaskDetail() {
       },
       {
         onSuccess: () => {
-          setEditModalVisible(false);
+          closeEditModal();
           Alert.alert('Succès', 'Tâche mise à jour');
         },
         onError: () => Alert.alert('Erreur', 'Impossible de mettre à jour la tâche'),
@@ -229,7 +249,7 @@ export default function ManagerTaskDetail() {
       {/* STATUS MODAL */}
       <Modal visible={statusModalVisible} transparent animationType="slide" onRequestClose={() => setStatusModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
             <Text style={styles.modalTitle}>Changer le statut</Text>
             {Object.entries(TASK_STATUS).map(([key, value]) => (
               <TouchableOpacity
@@ -251,24 +271,44 @@ export default function ManagerTaskDetail() {
       </Modal>
 
       {/* EDIT MODAL */}
-      <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
+      <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={closeEditModal}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboard}>
-            <View style={[styles.modalContent, { paddingBottom: insets.bottom }]}>
-              <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalKeyboard, editModalKeyboard.modalKeyboardStyle]}
+          >
+            <View style={[styles.modalContent, { maxHeight: editModalKeyboard.availableModalHeight, paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+              <ScrollView
+                {...editModalKeyboard.getScrollViewProps()}
+                style={styles.editModalScrollView}
+                contentContainerStyle={styles.editModalScrollContent}
+              >
               <Text style={styles.modalTitle}>Modifier la tâche</Text>
 
-              <View style={styles.formGroup}>
+              <View style={styles.formGroup} {...editModalKeyboard.getFieldLayoutProps('title')}>
                 <Text style={styles.label}>Titre</Text>
-                <ThemedTextInput style={styles.input} value={editForm.title} onChangeText={(t) => setEditForm({ ...editForm, title: t })} />
+                <ThemedTextInput
+                  style={styles.input}
+                  value={editForm.title}
+                  onChangeText={(t) => setEditForm({ ...editForm, title: t })}
+                  onFocus={() => editModalKeyboard.handleFieldFocus('title')}
+                  onBlur={() => editModalKeyboard.handleFieldBlur('title')}
+                />
               </View>
 
-              <View style={styles.formGroup}>
+              <View style={styles.formGroup} {...editModalKeyboard.getFieldLayoutProps('description')}>
                 <Text style={styles.label}>Description</Text>
-                <ThemedTextInput style={[styles.input, styles.textArea]} value={editForm.description} onChangeText={(t) => setEditForm({ ...editForm, description: t })} multiline />
+                <ThemedTextInput
+                  style={[styles.input, styles.textArea]}
+                  value={editForm.description}
+                  onChangeText={(t) => setEditForm({ ...editForm, description: t })}
+                  multiline
+                  onFocus={() => editModalKeyboard.handleFieldFocus('description')}
+                  onBlur={() => editModalKeyboard.handleFieldBlur('description')}
+                />
               </View>
 
-              <View style={styles.formGroup}>
+              <View style={styles.formGroup} {...editModalKeyboard.getFieldLayoutProps('priority')}>
                 <Text style={styles.label}>Priorité</Text>
                 <View style={styles.priorityRow}>
                   {Object.values(TASK_PRIORITY).map((p) => (
@@ -285,7 +325,7 @@ export default function ManagerTaskDetail() {
                 </View>
               </View>
 
-              <View style={styles.formGroup}>
+              <View style={styles.formGroup} {...editModalKeyboard.getFieldLayoutProps('assignees')}>
                 <Text style={styles.label}>Assigné à</Text>
                 <TouchableOpacity
                   style={styles.selectorCard}
@@ -310,7 +350,7 @@ export default function ManagerTaskDetail() {
               </View>
 
               <View style={styles.buttonRow}>
-                <TouchableOpacity style={styles.modalCancelButton} onPress={() => setEditModalVisible(false)}>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={closeEditModal}>
                   <Text style={styles.modalCancelText}>Annuler</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -334,88 +374,117 @@ export default function ManagerTaskDetail() {
         visible={assigneeModalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => {
-          setAssigneeModalVisible(false);
-          setAssigneeSearchQuery('');
-        }}
+        onRequestClose={closeAssigneeModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Choisir les ouvriers</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalKeyboard, assigneeModalKeyboard.modalKeyboardStyle]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  maxHeight: assigneeModalKeyboard.availableModalHeight,
+                  height: assigneeModalKeyboard.keyboardHeight > 0
+                    ? assigneeModalKeyboard.availableModalHeight
+                    : Math.min(560, assigneeModalKeyboard.availableModalHeight),
+                  paddingBottom: Math.max(insets.bottom, 16) + 12,
+                },
+              ]}
+            >
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>Choisir les ouvriers</Text>
+                <TouchableOpacity onPress={closeAssigneeModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={24} color={colors.textDark} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color={colors.textMuted} />
+                <ThemedTextInput
+                  style={styles.searchInput}
+                  placeholder="Rechercher..."
+                  value={assigneeSearchQuery}
+                  onChangeText={setAssigneeSearchQuery}
+                  autoCorrect={false}
+                  returnKeyType="search"
+                />
+                {assigneeSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setAssigneeSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <TouchableOpacity
-                onPress={() => {
-                  setAssigneeModalVisible(false);
-                  setAssigneeSearchQuery('');
-                }}
+                style={[styles.workerModalItem, selectedAssigneeIds.length === 0 && styles.workerModalItemSelected]}
+                onPress={() => setEditForm({ ...editForm, assigneeIds: [] })}
               >
-                <Ionicons name="close" size={24} color={colors.textDark} />
+                <View style={styles.avatarSmall}>
+                  <Ionicons name="person-remove-outline" size={18} color={selectedAssigneeIds.length === 0 ? '#fff' : colors.primary} />
+                </View>
+                <Text style={[styles.workerName, selectedAssigneeIds.length === 0 && styles.selectedTextColor]}>
+                  Aucun ouvrier assigné
+                </Text>
+                {selectedAssigneeIds.length === 0 && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+              </TouchableOpacity>
+
+              <ScrollView
+                style={styles.workerList}
+                contentContainerStyle={{ paddingBottom: 12 }}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+              >
+                {filteredAssignees.map((m) => {
+                  const u = m.user;
+                  if (!u) return null;
+                  const memberId = String(getMemberUserId(m));
+                  const isSelected = selectedAssigneeIds.includes(memberId);
+                  return (
+                    <TouchableOpacity
+                      key={m.userId}
+                      style={[styles.workerModalItem, isSelected && styles.workerModalItemSelected]}
+                      onPress={() => {
+                        const nextIds = isSelected
+                          ? selectedAssigneeIds.filter((id) => id !== memberId)
+                          : [...selectedAssigneeIds, memberId];
+                        setEditForm({ ...editForm, assigneeIds: nextIds });
+                      }}
+                    >
+                      <View style={styles.avatarSmall}>
+                        <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
+                      </View>
+                      <Text style={[styles.workerName, isSelected && styles.selectedTextColor]}>
+                        {u.firstName} {u.lastName}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {filteredAssignees.length === 0 && (
+                  <View style={styles.emptyAssigneeContainer}>
+                    <Ionicons name="people-outline" size={36} color={colors.textMuted} />
+                    <Text style={styles.emptyAssigneeText}>
+                      {assigneeSearchQuery ? 'Aucun résultat trouvé' : 'Aucun ouvrier disponible'}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.confirmSelectionButton}
+                onPress={closeAssigneeModal}
+              >
+                <Text style={styles.confirmSelectionButtonText}>
+                  {selectedAssigneeIds.length > 0
+                    ? `Valider (${selectedAssigneeIds.length} sélectionné${selectedAssigneeIds.length > 1 ? 's' : ''})`
+                    : 'Valider'}
+                </Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textMuted} />
-              <ThemedTextInput
-                style={styles.searchInput}
-                placeholder="Rechercher..."
-                value={assigneeSearchQuery}
-                onChangeText={setAssigneeSearchQuery}
-              />
-              {assigneeSearchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setAssigneeSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.workerModalItem, selectedAssigneeIds.length === 0 && styles.workerModalItemSelected]}
-              onPress={() => setEditForm({ ...editForm, assigneeIds: [] })}
-            >
-              <View style={styles.avatarSmall}>
-                <Ionicons name="person-remove-outline" size={18} color={selectedAssigneeIds.length === 0 ? '#fff' : colors.primary} />
-              </View>
-              <Text style={[styles.workerName, selectedAssigneeIds.length === 0 && styles.selectedTextColor]}>
-                Aucun ouvrier assigné
-              </Text>
-              {selectedAssigneeIds.length === 0 && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
-            </TouchableOpacity>
-
-            <ScrollView style={{ maxHeight: 320 }}>
-              {filteredAssignees.map((m) => {
-                const u = m.user;
-                if (!u) return null;
-                return (
-                  <TouchableOpacity
-                    key={m.userId}
-                    style={[styles.workerModalItem, selectedAssigneeIds.includes(String(getMemberUserId(m))) && styles.workerModalItemSelected]}
-                    onPress={() => {
-                      const memberId = String(getMemberUserId(m));
-                      const selected = selectedAssigneeIds.includes(memberId);
-                      setEditForm({ ...editForm, assigneeIds: selected ? selectedAssigneeIds.filter((id) => id !== memberId) : [...selectedAssigneeIds, memberId] });
-                    }}
-                  >
-                    <View style={styles.avatarSmall}>
-                      <Text style={styles.avatarSmallText}>{u.firstName?.[0]}{u.lastName?.[0]}</Text>
-                    </View>
-                    <Text style={[styles.workerName, selectedAssigneeIds.includes(String(getMemberUserId(m))) && styles.selectedTextColor]}>
-                      {u.firstName} {u.lastName}
-                    </Text>
-                    {selectedAssigneeIds.includes(String(getMemberUserId(m))) && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
-                  </TouchableOpacity>
-                );
-              })}
-
-              {filteredAssignees.length === 0 && (
-                <View style={styles.emptyAssigneeContainer}>
-                  <Ionicons name="people-outline" size={36} color={colors.textMuted} />
-                  <Text style={styles.emptyAssigneeText}>
-                    {assigneeSearchQuery ? 'Aucun resultat trouve' : 'Aucun ouvrier disponible'}
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -593,6 +662,9 @@ const styles = StyleSheet.create({
   deleteButtonText: { color: colors.error, fontWeight: '600', marginLeft: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalKeyboard: { width: '100%', justifyContent: 'flex-end' },
+  workerList: { flex: 1, minHeight: 80 },
+  confirmSelectionButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  confirmSelectionButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark, marginBottom: 20 },
   statusOption: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 8, backgroundColor: '#F5F5F5' },

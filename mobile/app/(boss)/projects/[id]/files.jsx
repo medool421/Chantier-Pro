@@ -20,8 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../src/theme/colors';
 import ThemedTextInput from '../../../../src/components/ThemedTextInput';
 import { useProjectFiles, useUploadFile } from '../../../../src/hooks/useFiles';
-import { filesService, getReadableFileName } from '../../../../src/api/files.service';
+import { filesService, getReadableFileName, isImageFile } from '../../../../src/api/files.service';
 import ImagePreviewModal from '../../../../src/components/ImagePreviewModal';
+import { useKeyboardAwareModal } from '../../../../src/hooks/useKeyboardAwareModal';
 
 function formatSize(size) {
   if (!size) return 'Taille inconnue';
@@ -81,6 +82,10 @@ export default function ProjectFiles() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [pendingUpload, setPendingUpload] = useState(null);
   const [fileNameDraft, setFileNameDraft] = useState('');
+
+  const renameModalKeyboard = useKeyboardAwareModal({
+    isVisible: !!pendingUpload,
+  });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [failedUpload, setFailedUpload] = useState(null);
   const uploadMutation = useUploadFile(projectId);
@@ -150,8 +155,10 @@ export default function ProjectFiles() {
   };
 
   const cancelNameEntry = () => {
-    setPendingUpload(null);
-    setFileNameDraft('');
+    renameModalKeyboard.dismissAndReset(() => {
+      setPendingUpload(null);
+      setFileNameDraft('');
+    });
   };
 
   const confirmUpload = () => {
@@ -181,18 +188,13 @@ export default function ProjectFiles() {
   const openFile = async (file) => {
     setOpeningFileId(file.id);
     try {
-      const isImage = file.mimeType?.startsWith('image/')
-        || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(file.originalName || '');
-
-      if (isImage) {
+      if (isImageFile(file)) {
         const localUri = await filesService.downloadToCache(file);
         setPreview({ file, uri: localUri });
       } else {
         await filesService.downloadAndOpen(file);
       }
     } catch (error) {
-      // The download request remains authenticated; do not fall back to a
-      // public filesystem URL when opening fails.
       Alert.alert('Erreur', error.message || 'Impossible d’ouvrir le fichier.');
     } finally {
       setOpeningFileId(null);
@@ -283,11 +285,22 @@ export default function ProjectFiles() {
       />
       <Modal visible={!!pendingUpload} transparent animationType="fade" onRequestClose={cancelNameEntry}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboard}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalKeyboard, renameModalKeyboard.modalKeyboardStyle]}
+          >
             <View style={styles.nameModal}>
               <Text style={styles.modalTitle}>Nom du fichier</Text>
               <View style={styles.fileNameRow}>
-                <ThemedTextInput autoFocus value={fileNameDraft} onChangeText={setFileNameDraft} maxLength={120} style={styles.fileNameInput} returnKeyType="done" onSubmitEditing={confirmUpload} />
+                <ThemedTextInput
+                  autoFocus
+                  value={fileNameDraft}
+                  onChangeText={setFileNameDraft}
+                  maxLength={120}
+                  style={styles.fileNameInput}
+                  returnKeyType="done"
+                  onSubmitEditing={confirmUpload}
+                />
                 <Text style={styles.extensionLabel}>.{pendingUpload?.extension}</Text>
               </View>
               <Text style={styles.modalCategory}>{categoryLabel(pendingUpload?.category)}</Text>
