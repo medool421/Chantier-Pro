@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
-  ActivityIndicator, TouchableOpacity, Modal, RefreshControl,
+  ActivityIndicator, TouchableOpacity, Modal, RefreshControl, ScrollView,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../src/theme/colors';
 import { useProjectReports } from '../../../src/hooks/useReports';
+import ReportImagePreview from '../../../src/components/ReportImagePreview';
 
 export default function ProjectReports() {
   const { projectId } = useLocalSearchParams();
@@ -15,13 +16,16 @@ export default function ProjectReports() {
   const { data: reports = [], isLoading, isError, isRefetching, refetch } = useProjectReports(projectId);
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => setSelectedReport(item)}>
+    <TouchableOpacity style={styles.card} onPress={() => setSelectedReport(item)} activeOpacity={0.85}>
       <View style={styles.cardHeader}>
-        <Text style={styles.date}>{new Date(item.reportDate).toLocaleDateString()}</Text>
+        <Text style={styles.date}>{new Date(item.reportDate).toLocaleDateString('fr-FR')}</Text>
         <Ionicons name="documents-outline" size={20} color={colors.primary} />
       </View>
       <Text style={styles.title} numberOfLines={1}>{item.title || 'Rapport journalier'}</Text>
       <Text style={styles.preview} numberOfLines={2}>{item.content}</Text>
+      {!!item.imageUrl && (
+        <ReportImagePreview report={item} compact />
+      )}
       <View style={styles.authorRow}>
         <Text style={styles.author}>Par: {item.user?.firstName || 'Inconnu'}</Text>
       </View>
@@ -84,16 +88,21 @@ export default function ProjectReports() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.modalDate}>
-                {new Date(selectedReport.reportDate).toLocaleDateString()}
+                {new Date(selectedReport.reportDate).toLocaleDateString('fr-FR')}
               </Text>
               <View style={styles.divider} />
-              <Text style={styles.modalReportTitle}>{selectedReport.title}</Text>
-              <Text style={styles.modalBody}>{selectedReport.content}</Text>
-              <View style={styles.modalFooter}>
-                <Text style={styles.modalAuthor}>
-                  Rédigé par: {selectedReport.user?.firstName} {selectedReport.user?.lastName}
-                </Text>
-              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={styles.modalReportTitle}>{selectedReport.title}</Text>
+                <Text style={styles.modalBody}>{selectedReport.content}</Text>
+                {!!selectedReport.imageUrl && (
+                  <ReportImagePreview report={selectedReport} style={styles.modalImage} />
+                )}
+                <View style={styles.modalFooter}>
+                  <Text style={styles.modalAuthor}>
+                    Rédigé par: {selectedReport.user?.firstName} {selectedReport.user?.lastName}
+                  </Text>
+                </View>
+              </ScrollView>
             </View>
           )}
         </View>
@@ -129,6 +138,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#E0E0E0', marginBottom: 20 },
   modalReportTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12, color: colors.textDark },
   modalBody: { fontSize: 16, color: '#333', lineHeight: 24 },
-  modalFooter: { marginTop: 40, alignItems: 'flex-end' },
+  modalImage: { marginVertical: 16 },
+  modalFooter: { marginTop: 32, marginBottom: 24, alignItems: 'flex-end' },
   modalAuthor: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
 });

@@ -1,10 +1,16 @@
 const reportService = require('../services/report.service');
 const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
 
 exports.createReport = catchAsync(async (req, res) => {
+  if (req.file && !Buffer.isBuffer(req.file.buffer)) {
+    throw new AppError('Invalid report photo', 400);
+  }
+
   const report = await reportService.createReport(
     req.params.projectId,
     req.body,
+    req.file,
     req.user
   );
 
@@ -36,4 +42,13 @@ exports.getReportById = catchAsync(async (req, res) => {
     success: true,
     data: report,
   });
+});
+
+exports.getReportPhoto = catchAsync(async (req, res) => {
+  const filePath = await reportService.getReportPhoto(
+    req.params.id,
+    req.user
+  );
+
+  res.sendFile(filePath);
 });

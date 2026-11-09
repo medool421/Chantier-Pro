@@ -20,6 +20,8 @@ import ThemedTextInput from '../../../src/components/ThemedTextInput';
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '../../../src/utils/constants';
 import { useTask, useUpdateTaskStatus } from '../../../src/hooks/useTasks';
 import { useCreateTaskUpdate, useTaskUpdates } from '../../../src/hooks/useTaskUpdates';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardAwareModal } from '../../../src/hooks/useKeyboardAwareModal';
 
 const getImageMimeType = (uri) => {
   const extension = uri.split('.').pop()?.toLowerCase();
@@ -42,6 +44,11 @@ export default function WorkerTaskDetail() {
   const [selectedImageUri, setSelectedImageUri] = useState('');
   const [message, setMessage] = useState('');
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const updateModalKeyboard = useKeyboardAwareModal({
+    isVisible: updateModalVisible,
+  });
 
   // ─── Query ────────────────────────────────────────────────────────────────
   const { data: task, isLoading, isError, refetch } = useTask(taskId);
@@ -91,7 +98,7 @@ export default function WorkerTaskDetail() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 0.7,
       });
@@ -109,7 +116,7 @@ export default function WorkerTaskDetail() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.7,
     });
@@ -351,37 +358,50 @@ export default function WorkerTaskDetail() {
 
       <Modal visible={updateModalVisible} transparent animationType="slide" onRequestClose={resetUpdateForm}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboard}>
-            <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {updateType === 'DONE' ? 'Mark as Done' : 'Report Problem'}
-            </Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalKeyboard, updateModalKeyboard.modalKeyboardStyle]}
+          >
+            <View style={[styles.modalContent, { maxHeight: updateModalKeyboard.availableModalHeight, paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+              <ScrollView
+                {...updateModalKeyboard.getScrollViewProps()}
+                style={styles.updateModalScrollView}
+                contentContainerStyle={styles.updateModalScrollContent}
+              >
+                <Text style={styles.modalTitle}>
+                  {updateType === 'DONE' ? 'Terminer la tâche' : 'Signaler un problème'}
+                </Text>
 
-            {!!selectedImageUri && (
-              <Image source={{ uri: selectedImageUri }} style={styles.previewImage} />
-            )}
+                {!!selectedImageUri && (
+                  <Image source={{ uri: selectedImageUri }} style={styles.previewImage} />
+                )}
 
-            <ThemedTextInput
-              style={styles.messageInput}
-              placeholder="Message (optionnel)"
-              multiline
-              value={message}
-              onChangeText={setMessage}
-            />
+                <View {...updateModalKeyboard.getFieldLayoutProps('message')}>
+                  <ThemedTextInput
+                    style={styles.messageInput}
+                    placeholder="Message (optionnel)"
+                    multiline
+                    value={message}
+                    onChangeText={setMessage}
+                    onFocus={() => updateModalKeyboard.handleFieldFocus('message')}
+                    onBlur={() => updateModalKeyboard.handleFieldBlur('message')}
+                  />
+                </View>
 
-            <TouchableOpacity
-              style={[styles.submitUpdateButton, isSubmittingUpdate && styles.buttonDisabled]}
-              onPress={submitTaskUpdate}
-              disabled={isSubmittingUpdate}
-            >
-              <Text style={styles.submitUpdateText}>
-                {isSubmittingUpdate ? 'Envoi...' : 'Envoyer'}
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitUpdateButton, isSubmittingUpdate && styles.buttonDisabled]}
+                  onPress={submitTaskUpdate}
+                  disabled={isSubmittingUpdate}
+                >
+                  <Text style={styles.submitUpdateText}>
+                    {isSubmittingUpdate ? 'Envoi...' : 'Envoyer'}
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity style={styles.modalCancelButton} onPress={resetUpdateForm} disabled={isSubmittingUpdate}>
-              <Text style={styles.modalCancelText}>Annuler</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={resetUpdateForm} disabled={isSubmittingUpdate}>
+                  <Text style={styles.modalCancelText}>Annuler</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>

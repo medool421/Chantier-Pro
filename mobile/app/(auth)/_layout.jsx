@@ -13,6 +13,7 @@ export default function AuthLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="register-boss" />
       <Stack.Screen name="invite-register" />
+      <Stack.Screen name="register-invited" />
     </Stack>
   );
 }

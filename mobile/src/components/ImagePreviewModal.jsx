@@ -63,10 +63,10 @@ function getMidpoint(first, second) {
 function isGalleryImage(file) {
   const mimeType = file?.mimeType?.toLowerCase();
   if (mimeType) {
-    return mimeType === 'image/jpeg' || mimeType === 'image/jpg' || mimeType === 'image/png';
+    return mimeType === 'image/jpeg' || mimeType === 'image/jpg' || mimeType === 'image/png' || mimeType === 'image/webp';
   }
 
-  return /\.(jpe?g|png)$/i.test(file?.originalName || '');
+  return /\.(jpe?g|png|webp)$/i.test(file?.originalName || '');
 }
 
 export default function ImagePreviewModal({ visible, file, uri, onClose }) {
@@ -291,6 +291,7 @@ export default function ImagePreviewModal({ visible, file, uri, onClose }) {
 
       await filesService.saveToGallery({
         localUri: uri,
+        id: file?.id,
         downloadUrl: file?.downloadUrl,
         originalName: file?.originalName,
         mimeType: file?.mimeType,

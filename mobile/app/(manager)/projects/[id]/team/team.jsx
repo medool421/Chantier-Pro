@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { colors } from '../../../../../src/theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useProjectTeam,
   useCompanyWorkers,
@@ -15,6 +16,7 @@ import {
 } from '../../../../../src/hooks/useProjects';
 
 export default function ManagerTeam() {
+  const insets = useSafeAreaInsets();
   const { id: projectId } = useLocalSearchParams();
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [createdTeamId, setCreatedTeamId] = React.useState(null);
@@ -227,7 +229,7 @@ export default function ManagerTeam() {
         onRequestClose={() => setPickerOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Ajouter un ouvrier</Text>
               <TouchableOpacity onPress={() => setPickerOpen(false)}>

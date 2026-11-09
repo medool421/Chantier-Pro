@@ -51,68 +51,68 @@ export default function RegisterBoss() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardContainer}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-      <Image source={require('../../src/assets/ChantierPro.png')} style={styles.image} />
-      <Text style={styles.title}>Créer votre entreprise</Text>
-      <Text style={styles.subtitle}>Accès Administrateur · Boss</Text>
+        <Image source={require('../../src/assets/ChantierPro.png')} style={styles.image} />
+        <Text style={styles.title}>Créer votre entreprise</Text>
+        <Text style={styles.subtitle}>Accès Administrateur · Boss</Text>
 
-      <Text style={styles.sectionLabel}>INFORMATIONS PERSONNELLES</Text>
+        <Text style={styles.sectionLabel}>INFORMATIONS PERSONNELLES</Text>
 
-      <Text style={styles.fieldLabel}>Prénom <Text style={styles.required}>*</Text></Text>
-      <ThemedTextInput
-        placeholder="Prénom"
-        value={firstName}
-        onChangeText={setFirstName}
-        style={styles.input}
-      />
-      <Text style={styles.fieldLabel}>Nom <Text style={styles.required}>*</Text></Text>
-      <ThemedTextInput
-        placeholder="Nom"
-        value={lastName}
-        onChangeText={setLastName}
-        style={styles.input}
-      />
-      <Text style={styles.fieldLabel}>Email professionnel <Text style={styles.required}>*</Text></Text>
-      <ThemedTextInput
-        placeholder="Email professionnel"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-      />
-      <Text style={styles.fieldLabel}>Mot de passe <Text style={styles.required}>*</Text></Text>
-      <View style={styles.passwordContainer}>
-        <ThemedTextInput placeholder="Mot de passe" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.passwordInput} />
-        <Pressable onPress={() => setShowPassword((visible) => !visible)} accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} hitSlop={10}>
-          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={21} color={colors.textMuted} />
+        <Text style={styles.fieldLabel}>Prénom <Text style={styles.required}>*</Text></Text>
+        <ThemedTextInput
+          placeholder="Prénom"
+          value={firstName}
+          onChangeText={setFirstName}
+          style={styles.input}
+        />
+        <Text style={styles.fieldLabel}>Nom <Text style={styles.required}>*</Text></Text>
+        <ThemedTextInput
+          placeholder="Nom"
+          value={lastName}
+          onChangeText={setLastName}
+          style={styles.input}
+        />
+        <Text style={styles.fieldLabel}>Email professionnel <Text style={styles.required}>*</Text></Text>
+        <ThemedTextInput
+          placeholder="Email professionnel"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          style={styles.input}
+        />
+        <Text style={styles.fieldLabel}>Mot de passe <Text style={styles.required}>*</Text></Text>
+        <View style={styles.passwordContainer}>
+          <ThemedTextInput placeholder="Mot de passe" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} style={styles.passwordInput} />
+          <Pressable onPress={() => setShowPassword((visible) => !visible)} accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} hitSlop={10}>
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={21} color={colors.textMuted} />
+          </Pressable>
+        </View>
+
+        <Text style={styles.sectionLabel}>VOTRE ENTREPRISE</Text>
+
+        <Text style={styles.fieldLabel}>Nom de l'entreprise <Text style={styles.required}>*</Text></Text>
+        <ThemedTextInput
+          placeholder="Nom de l'entreprise"
+          value={companyName}
+          onChangeText={setCompanyName}
+          style={styles.input}
+        />
+        <Text style={styles.fieldLabel}>Téléphone</Text>
+        <ThemedTextInput placeholder="Téléphone" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.input} />
+
+        <Pressable
+          style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
+          onPress={handleRegister}
+          disabled={isLoading}
+        >
+          <Text style={styles.primaryText}>
+            {isLoading ? 'Création en cours...' : 'Créer mon espace'}
+          </Text>
         </Pressable>
-      </View>
 
-      <Text style={styles.sectionLabel}>VOTRE ENTREPRISE</Text>
-
-      <Text style={styles.fieldLabel}>Nom de l'entreprise <Text style={styles.required}>*</Text></Text>
-      <ThemedTextInput
-        placeholder="Nom de l'entreprise"
-        value={companyName}
-        onChangeText={setCompanyName}
-        style={styles.input}
-      />
-      <Text style={styles.fieldLabel}>Téléphone</Text>
-      <ThemedTextInput placeholder="Téléphone" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.input} />
-
-      <Pressable
-        style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
-        onPress={handleRegister}
-        disabled={isLoading}
-      >
-        <Text style={styles.primaryText}>
-          {isLoading ? 'Création en cours...' : 'Créer mon espace'}
-        </Text>
-      </Pressable>
-
-      <Pressable onPress={() => router.replace('/(auth)/login')}>
-        <Text style={styles.link}>J'ai déjà un compte</Text>
-      </Pressable>
+        <Pressable onPress={() => router.replace('/(auth)/login')}>
+          <Text style={styles.link}>J'ai déjà un compte</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -125,6 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundLight,
     padding: 24,
     justifyContent: 'center',
+    paddingTop: 68,
     paddingBottom: 48,
   },
   image: {

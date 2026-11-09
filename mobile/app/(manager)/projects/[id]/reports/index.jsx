@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
-  ActivityIndicator, TouchableOpacity, RefreshControl,
+  ActivityIndicator, TouchableOpacity, RefreshControl, Modal, ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../../../src/theme/colors';
 import { useProjectReports } from '../../../../../src/hooks/useReports';
+import ReportImagePreview from '../../../../../src/components/ReportImagePreview';
 
 export default function ManagerReports() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const [selectedReport, setSelectedReport] = useState(null);
 
   const {
     data: reports = [],
@@ -37,7 +39,11 @@ export default function ManagerReports() {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => setSelectedReport(item)}
+      activeOpacity={0.9}
+    >
       <View style={styles.cardHeader}>
         <View style={[styles.iconContainer, { backgroundColor: getReportColor(item.type) + '15' }]}>
           <Ionicons name={getReportIcon(item.type)} size={24} color={getReportColor(item.type)} />
@@ -51,7 +57,10 @@ export default function ManagerReports() {
         </View>
       </View>
       <Text style={styles.content} numberOfLines={3}>{item.content}</Text>
-    </View>
+      {!!item.imageUrl && (
+        <ReportImagePreview report={item} compact />
+      )}
+    </TouchableOpacity>
   );
 
   if (isLoading) {
@@ -106,6 +115,42 @@ export default function ManagerReports() {
           </View>
         }
       />
+
+      <Modal
+        visible={!!selectedReport}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedReport(null)}
+      >
+        <View style={styles.modalContainer}>
+          {selectedReport && (
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Détails du Rapport</Text>
+                <TouchableOpacity onPress={() => setSelectedReport(null)}>
+                  <Ionicons name="close-circle" size={30} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalDate}>
+                {new Date(selectedReport.reportDate || selectedReport.date).toLocaleDateString('fr-FR')}
+              </Text>
+              <View style={styles.divider} />
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={styles.modalReportTitle}>{selectedReport.title}</Text>
+                <Text style={styles.modalBody}>{selectedReport.content}</Text>
+                {!!selectedReport.imageUrl && (
+                  <ReportImagePreview report={selectedReport} style={styles.modalImage} />
+                )}
+                <View style={styles.modalFooter}>
+                  <Text style={styles.modalAuthor}>
+                    {selectedReport.user ? `Rédigé par: ${selectedReport.user.firstName} ${selectedReport.user.lastName}` : ''}
+                  </Text>
+                </View>
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -134,4 +179,15 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, textAlign: 'center' },
   retryButton: { marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
   retryButtonText: { color: '#fff', fontWeight: '600' },
+  modalContainer: { flex: 1, backgroundColor: '#fff' },
+  modalContent: { padding: 24, flex: 1 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textDark },
+  modalDate: { color: colors.textMuted, marginBottom: 16 },
+  divider: { height: 1, backgroundColor: '#E0E0E0', marginBottom: 16 },
+  modalReportTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12, color: colors.textDark },
+  modalBody: { fontSize: 16, color: '#333', lineHeight: 24 },
+  modalImage: { marginVertical: 16 },
+  modalFooter: { marginTop: 32, marginBottom: 24, alignItems: 'flex-end' },
+  modalAuthor: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
 });

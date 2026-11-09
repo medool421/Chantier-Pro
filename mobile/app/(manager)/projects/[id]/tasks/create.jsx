@@ -10,11 +10,14 @@ import ThemedTextInput from '../../../../../src/components/ThemedTextInput';
 import { TASK_PRIORITY, TASK_PRIORITY_LABELS } from '../../../../../src/utils/constants';
 import { useCreateTask } from '../../../../../src/hooks/useTasks';
 import { useProjectTeam } from '../../../../../src/hooks/useProjects';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardAwareModal } from '../../../../../src/hooks/useKeyboardAwareModal';
 
 const DEFAULT_PRIORITIES = { LOW: 'LOW', NORMAL: 'NORMAL', HIGH: 'HIGH' };
 const PRIORITIES = TASK_PRIORITY || DEFAULT_PRIORITIES;
 
 export default function CreateTask() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
   const projectId = params.projectId || params.id;
@@ -28,6 +31,17 @@ export default function CreateTask() {
   });
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const assigneeModalKeyboard = useKeyboardAwareModal({
+    isVisible: modalVisible,
+  });
+
+  const closeModal = () => {
+    assigneeModalKeyboard.dismissAndReset(() => {
+      setModalVisible(false);
+      setSearchQuery('');
+    });
+  };
 
   // ─── Queries ─────────────────────────────────────────────────────────────
   const { data: teamData, isLoading: teamLoading } = useProjectTeam(projectId);
@@ -170,64 +184,101 @@ export default function CreateTask() {
         visible={modalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => { setModalVisible(false); setSearchQuery(''); }}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choisir les ouvriers</Text>
-              <TouchableOpacity onPress={() => { setModalVisible(false); setSearchQuery(''); }}>
-                <Ionicons name="close" size={24} color={colors.textDark} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalKeyboard, assigneeModalKeyboard.modalKeyboardStyle]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  maxHeight: assigneeModalKeyboard.availableModalHeight,
+                  height: assigneeModalKeyboard.keyboardHeight > 0
+                    ? assigneeModalKeyboard.availableModalHeight
+                    : Math.min(560, assigneeModalKeyboard.availableModalHeight),
+                  paddingBottom: Math.max(insets.bottom, 16) + 12,
+                },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Choisir les ouvriers</Text>
+                <TouchableOpacity onPress={closeModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={24} color={colors.textDark} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color={colors.textMuted} />
+                <ThemedTextInput
+                  style={styles.searchInput}
+                  placeholder="Rechercher un ouvrier..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoCorrect={false}
+                  returnKeyType="search"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.workerModalItem, form.assigneeIds.length === 0 && styles.workerModalItemSelected]}
+                onPress={() => { setForm({ ...form, assigneeIds: [] }); }}
+              >
+                <View style={styles.avatarSmall}>
+                  <Ionicons name="person-remove-outline" size={18} color={form.assigneeIds.length === 0 ? '#fff' : colors.primary} />
+                </View>
+                <Text style={[styles.workerName, form.assigneeIds.length === 0 && styles.selectedTextColor]}>Aucun ouvrier assigné</Text>
+                {form.assigneeIds.length === 0 && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
+              </TouchableOpacity>
+
+              <FlatList
+                data={filteredWorkers}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={renderWorkerItem}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                style={styles.workerList}
+                contentContainerStyle={{ paddingBottom: 12 }}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="people-outline" size={40} color={colors.textMuted} />
+                    <Text style={styles.emptyText}>
+                      {searchQuery ? 'Aucun résultat trouvé' : 'Aucun ouvrier disponible'}
+                    </Text>
+                    {!searchQuery && (
+                      <TouchableOpacity
+                        style={styles.manageTeamButton}
+                        onPress={() => {
+                          closeModal();
+                          router.push(`/(manager)/projects/${projectId}/team/team`);
+                        }}
+                      >
+                        <Text style={styles.manageTeamButtonText}>Gérer l'équipe</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                }
+              />
+
+              <TouchableOpacity
+                style={styles.confirmSelectionButton}
+                onPress={closeModal}
+              >
+                <Text style={styles.confirmSelectionButtonText}>
+                  {form.assigneeIds.length > 0
+                    ? `Valider (${form.assigneeIds.length} sélectionné${form.assigneeIds.length > 1 ? 's' : ''})`
+                    : 'Valider'}
+                </Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textMuted} />
-              <ThemedTextInput style={styles.searchInput} placeholder="Rechercher..." value={searchQuery} onChangeText={setSearchQuery} />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.workerModalItem, form.assigneeIds.length === 0 && styles.workerModalItemSelected]}
-              onPress={() => { setForm({ ...form, assigneeIds: [] }); }}
-            >
-              <View style={styles.avatarSmall}>
-                <Ionicons name="person-remove-outline" size={18} color={form.assigneeIds.length === 0 ? '#fff' : colors.primary} />
-              </View>
-              <Text style={[styles.workerName, form.assigneeIds.length === 0 && styles.selectedTextColor]}>Aucun ouvrier assigné</Text>
-              {form.assigneeIds.length === 0 && <Ionicons name="checkmark-circle" size={24} color="#fff" />}
-            </TouchableOpacity>
-
-            <FlatList
-              data={filteredWorkers}
-              keyExtractor={(item) => item.id}
-              renderItem={renderWorkerItem}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="people-outline" size={48} color={colors.textMuted} />
-                  <Text style={styles.emptyText}>
-                    {searchQuery ? 'Aucun résultat trouvé' : 'Aucun ouvrier disponible'}
-                  </Text>
-                  {!searchQuery && (
-                    <TouchableOpacity
-                      style={styles.manageTeamButton}
-                      onPress={() => {
-                        setModalVisible(false);
-                        router.push(`/(manager)/projects/${projectId}/team/team`);
-                      }}
-                    >
-                      <Text style={styles.manageTeamButtonText}>Gerer l'equipe</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              }
-            />
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -259,6 +310,10 @@ const styles = StyleSheet.create({
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   loadingText: { marginTop: 12, fontSize: 14, color: colors.textMuted },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalKeyboard: { width: '100%', justifyContent: 'flex-end' },
+  workerList: { flex: 1, minHeight: 80 },
+  confirmSelectionButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  confirmSelectionButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textDark },

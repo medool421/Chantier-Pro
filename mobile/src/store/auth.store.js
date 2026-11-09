@@ -6,6 +6,7 @@ import { queryClient } from '../utils/queryClient';
 
 export const useAuthStore = create((set) => ({
   user: null,
+  token: null,
   isAuthenticated: false,
   isLoading: false,
   isInitialized: false,
@@ -14,14 +15,14 @@ export const useAuthStore = create((set) => ({
     try {
       const token = await SecureStore.getItemAsync('accessToken');
       if (!token) {
-        set({ isInitialized: true, isAuthenticated: false });
+        set({ token: null, isInitialized: true, isAuthenticated: false });
         return;
       }
       const res = await api.get('/auth/me');
-      set({ user: res.data.data, isAuthenticated: true, isInitialized: true });
+      set({ user: res.data.data, token, isAuthenticated: true, isInitialized: true });
     } catch (err) {
       await SecureStore.deleteItemAsync('accessToken');
-      set({ user: null, isAuthenticated: false, isInitialized: true });
+      set({ user: null, token: null, isAuthenticated: false, isInitialized: true });
     }
   },
 
@@ -31,7 +32,7 @@ export const useAuthStore = create((set) => ({
       const res = await api.post('/auth/login', { email: email.trim().toLowerCase(), password });
       const { token, user } = res.data.data;
       await SecureStore.setItemAsync('accessToken', token);
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, token, isAuthenticated: true, isLoading: false });
       registerPushToken();
       return user;
     } catch (err) {
@@ -54,7 +55,7 @@ export const useAuthStore = create((set) => ({
       });
       const { token, user } = res.data.data;
       await SecureStore.setItemAsync('accessToken', token);
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, token, isAuthenticated: true, isLoading: false });
       registerPushToken();
       return user;
     } catch (err) {
@@ -78,7 +79,7 @@ export const useAuthStore = create((set) => ({
       });
       const { token, user } = res.data.data;
       await SecureStore.setItemAsync('accessToken', token);
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, token, isAuthenticated: true, isLoading: false });
       registerPushToken();
       return user;
     } catch (err) {
@@ -89,8 +90,14 @@ export const useAuthStore = create((set) => ({
 
   logout: async () => {
     await SecureStore.deleteItemAsync('accessToken');
-    set({ user: null, isAuthenticated: false });
+    set({ user: null, token: null, isAuthenticated: false });
     queryClient.clear();
+  },
+
+  getToken: async () => {
+    const activeToken = useAuthStore.getState().token;
+    if (activeToken) return activeToken;
+    return await SecureStore.getItemAsync('accessToken');
   },
 }));
 
